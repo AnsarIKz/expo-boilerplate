@@ -1,6 +1,6 @@
 ---
 description: Expo React Native TypeScript Cursor Rules
-globs:
+globs: 
 alwaysApply: false
 ---
 You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
@@ -31,6 +31,7 @@ You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
 
   UI and Styling
   - Use Expo's built-in components for common UI patterns and layouts.
+  - Use flex, or grid, do not force with px padding or margin, if it possible to do with flex.
   - Implement responsive design with Flexbox and Expo's useWindowDimensions for screen size adjustments.
   - Use styled-components or Tailwind CSS for component styling.
   - Implement dark mode support using Expo's useColorScheme.
@@ -57,9 +58,9 @@ You are an expert in TypeScript, React Native, Expo, and Mobile UI development.
   - Use dynamic routes with expo-router for better navigation handling.
 
   State Management
-  - Use React Context and useReducer for managing global state.
+  - Use React Query for server state, and Zustand for local state
   - Leverage react-query for data fetching and caching; avoid excessive API calls.
-  - For complex state management, consider using Zustand or Redux Toolkit.
+  - For complex state management, consider using Zustand.
   - Handle URL search parameters using libraries like expo-linking.
 
   Error Handling and Validation

@@ -1,75 +1,215 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Animated, RefreshControl, ScrollView, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FilterChips } from "@/components/ui/FilterChips";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LocationHeader } from "@/components/ui/LocationHeader";
+import { RestaurantCard } from "@/components/ui/RestaurantCard";
+import { SearchWrapper } from "@/components/ui/SearchWrapper";
+import { FilterChip } from "@/entities/Restaurant";
+import { useRestaurants } from "@/hooks/useRestaurants";
+
+const mockFilterChips: FilterChip[] = [
+  { id: "1", label: "Грузинская кухня", isSelected: false, type: "cuisine" },
+  { id: "2", label: "Детское меню", isSelected: false, type: "feature" },
+  { id: "3", label: "Быстрая доставка", isSelected: false, type: "feature" },
+];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+  const [searchText, setSearchText] = useState("");
+  const [filterChips, setFilterChips] = useState(mockFilterChips);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Refs для анимации и скролла
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [showFloatingButtons, setShowFloatingButtons] = useState(false);
+
+  // Используем React Query для загрузки ресторанов
+  const {
+    data: restaurants = [],
+    isLoading,
+    error,
+    refetch,
+  } = useRestaurants(searchText);
+
+  // Мемоизированное фильтрование ресторанов для оптимизации производительности
+  const filteredRestaurants = useMemo(() => {
+    if (!restaurants) return [];
+
+    return restaurants.filter((restaurant) => {
+      const selectedChipLabels = filterChips
+        .filter((chip) => chip.isSelected)
+        .map((chip) => chip.label.toLowerCase());
+
+      const matchesFilters =
+        selectedChipLabels.length === 0 ||
+        restaurant.tags.some((tag) =>
+          selectedChipLabels.some(
+            (chipLabel) =>
+              tag.label.toLowerCase().includes(chipLabel) ||
+              chipLabel.includes(tag.label.toLowerCase())
+          )
+        );
+
+      return matchesFilters;
+    });
+  }, [restaurants, filterChips]);
+
+  // Обработка скролла для показа кнопок
+  const handleScroll = useCallback(
+    (event: any) => {
+      const offsetY = event.nativeEvent.contentOffset.y;
+      const shouldShow = offsetY > 100; // Показываем кнопки после 100px скролла
+
+      if (shouldShow !== showFloatingButtons) {
+        setShowFloatingButtons(shouldShow);
+      }
+    },
+    [showFloatingButtons]
+  );
+
+  // Функции для скролла к поиску и фильтрам
+  const scrollToSearch = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
+  const scrollToFilters = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: 80, animated: true });
+  }, []);
+
+  // useCallback для предотвращения пересоздания функций при каждом рендере
+  const handleChipPress = useCallback((chipId: string) => {
+    setFilterChips((prev) =>
+      prev.map((chip) =>
+        chip.id === chipId ? { ...chip, isSelected: !chip.isSelected } : chip
+      )
+    );
+  }, []);
+
+  const handleFilterPress = useCallback(() => {
+    // Handle filter modal opening
+    console.log("Open filter modal");
+  }, []);
+
+  const handleRestaurantPress = useCallback((restaurantId: string) => {
+    router.push(`/restaurant/${restaurantId}` as any);
+  }, []);
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchText(text);
+  }, []);
+
+  const handleSearchFocusChange = useCallback((isFocused: boolean) => {
+    setIsSearchFocused(isFocused);
+  }, []);
+
+  const handleLocationPress = useCallback(() => {
+    // Handle location selection
+    console.log("Location pressed");
+  }, []);
+
+  // Рендер списка ресторанов
+  const renderRestaurantList = () => {
+    if (isLoading) {
+      return <LoadingSpinner text="Поиск ресторанов..." />;
+    }
+
+    if (error) {
+      return (
+        <EmptyState
+          title="Ошибка загрузки"
+          subtitle="Не удалось загрузить рестораны. Попробуйте еще раз."
+          iconName="alert-circle-outline"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      );
+    }
+
+    if (filteredRestaurants.length === 0) {
+      return (
+        <EmptyState
+          title="Ничего не найдено"
+          subtitle="Попробуйте изменить параметры поиска или фильтры"
+          iconName="restaurant-outline"
+        />
+      );
+    }
+
+    return (
+      <View>
+        {filteredRestaurants.map((restaurant) => (
+          <RestaurantCard
+            key={restaurant.id}
+            restaurant={restaurant}
+            onPress={handleRestaurantPress}
+          />
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-background-primary">
+        {/* Fixed Header with animated buttons */}
+
+        <LocationHeader
+          onPress={handleLocationPress}
+          showFloatingButtons={showFloatingButtons}
+          onSearchPress={scrollToSearch}
+          onFilterPress={scrollToFilters}
+        />
+
+        {/* Scrollable Content including Search and Filters */}
+        <ScrollView
+          ref={scrollViewRef}
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={
+            filteredRestaurants.length === 0 && !isLoading
+              ? { flexGrow: 1, paddingBottom: 20 }
+              : { paddingBottom: 20 }
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && !isSearchFocused}
+              onRefresh={refetch}
+              enabled={!isSearchFocused}
+              tintColor="#bd561c"
+              colors={["#bd561c"]}
+            />
+          }
+        >
+          {/* Search Bar - now scrollable */}
+          <View className="pb-3">
+            <SearchWrapper
+              placeholder="Название ресторана, тип кухни"
+              value={searchText}
+              onChangeText={handleSearchChange}
+              restaurants={restaurants || []}
+              onRestaurantPress={handleRestaurantPress}
+              onFocusChange={handleSearchFocusChange}
+            />
+          </View>
+
+          {/* Filters - now scrollable */}
+          <View className="mb-4">
+            <FilterChips
+              chips={filterChips}
+              onChipPress={handleChipPress}
+              onFilterPress={handleFilterPress}
+            />
+          </View>
+
+          {/* Restaurant List */}
+          {renderRestaurantList()}
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
