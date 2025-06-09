@@ -9,10 +9,13 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import "../global.css";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { CityProvider } from "@/providers/CityProvider";
+import { FiltersProvider } from "@/providers/FiltersProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
@@ -45,38 +48,64 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: "slide_from_right",
-          }}
-        >
-          <Stack.Screen
-            name="auth"
-            options={{
-              headerShown: false,
-              gestureEnabled: false,
-            }}
-          />
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-              gestureEnabled: false,
-            }}
-          />
-          <Stack.Screen
-            name="+not-found"
-            options={{
-              title: "Страница не найдена",
-              presentation: "modal",
-            }}
-          />
-        </Stack>
-        <StatusBar style="dark" />
-      </ThemeProvider>
-    </QueryProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryProvider>
+        <CityProvider>
+          <FiltersProvider>
+            <ThemeProvider
+              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+            >
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              >
+                <Stack.Screen
+                  name="auth"
+                  options={{
+                    headerShown: false,
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="+not-found"
+                  options={{
+                    title: "Страница не найдена",
+                    presentation: "modal",
+                  }}
+                />
+                <Stack.Screen
+                  name="city-selector"
+                  options={{
+                    presentation: "modal",
+                    headerShown: false,
+                    gestureEnabled: true,
+                    animation: "slide_from_bottom",
+                  }}
+                />
+                <Stack.Screen
+                  name="filters"
+                  options={{
+                    presentation: "modal",
+                    headerShown: false,
+                    gestureEnabled: true,
+                    animation: "slide_from_bottom",
+                  }}
+                />
+              </Stack>
+              <StatusBar style="dark" />
+            </ThemeProvider>
+          </FiltersProvider>
+        </CityProvider>
+      </QueryProvider>
+    </GestureHandlerRootView>
   );
 }

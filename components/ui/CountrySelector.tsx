@@ -92,7 +92,7 @@ export function CountrySelector({
   );
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-background-cream">
       <SafeAreaView className="flex-1">
         {/* Header */}
         <View className="flex-row items-center px-4 py-3 border-b border-neutral-200">

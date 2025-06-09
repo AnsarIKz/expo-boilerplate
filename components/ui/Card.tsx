@@ -25,7 +25,7 @@ const getCardStyles = (variant: CardVariant, padding: CardPadding) => {
 
   // Variant styles
   const variantStyles = {
-    elevated: "bg-white shadow-xl",
+    elevated: "bg-background-cream",
     outlined: "bg-white border border-neutral-200",
     filled: "bg-neutral-50",
   };

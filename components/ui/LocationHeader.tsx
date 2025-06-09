@@ -4,19 +4,21 @@ import { Animated, TouchableOpacity, View } from "react-native";
 import { Typography } from "./Typography";
 
 interface LocationHeaderProps {
-  city?: string;
+  city: string;
   onPress?: () => void;
   showFloatingButtons?: boolean;
   onSearchPress?: () => void;
   onFilterPress?: () => void;
+  activeFiltersCount?: number;
 }
 
 export function LocationHeader({
-  city = "Город Алматы",
+  city,
   onPress,
   showFloatingButtons = false,
   onSearchPress,
   onFilterPress,
+  activeFiltersCount = 0,
 }: LocationHeaderProps) {
   const leftButtonAnim = useRef(new Animated.Value(0)).current;
   const rightButtonAnim = useRef(new Animated.Value(0)).current;
@@ -116,11 +118,22 @@ export function LocationHeader({
         pointerEvents={showFloatingButtons ? "auto" : "none"}
       >
         <TouchableOpacity
-          className="w-10 h-10 bg-transparent rounded-full items-center justify-center"
+          className="w-10 h-10 bg-transparent rounded-full items-center justify-center relative"
           onPress={onFilterPress}
           activeOpacity={0.7}
         >
           <Ionicons name="options" size={20} color="#000000" />
+          {activeFiltersCount > 0 && (
+            <View className="absolute -top-1 -right-1 bg-primary-500 rounded-full w-5 h-5 items-center justify-center">
+              <Typography
+                variant="caption"
+                color="inverse"
+                className="text-white font-bold text-xs"
+              >
+                {activeFiltersCount}
+              </Typography>
+            </View>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </View>

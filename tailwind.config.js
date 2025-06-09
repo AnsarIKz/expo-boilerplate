@@ -62,6 +62,7 @@ module.exports = {
           primary: "#fff4d6",
           secondary: "#fff9e9",
           surface: "#ffffff",
+          cream: "#fffaea",
         },
         text: {
           primary: "#0d0d0d",

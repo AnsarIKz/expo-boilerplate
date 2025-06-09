@@ -37,7 +37,7 @@ export function SimpleGuestSelector({
                 className={`w-12 h-12 rounded-xl border-2 items-center justify-center ${
                   isSelected
                     ? "bg-primary-500 border-primary-500"
-                    : "bg-white border-neutral-300"
+                    : "bg-background-cream border-neutral-300"
                 }`}
                 activeOpacity={0.7}
               >

@@ -60,16 +60,18 @@ export function TimeSlotSelector({
               activeOpacity={0.7}
             >
               <Card
-                variant={isSelected ? "elevated" : "outlined"}
+                variant="outlined"
                 padding="sm"
-                className={`min-w-[80px] ${
-                  isSelected ? "bg-primary-100 border-primary-300" : ""
+                className={`min-w-[80px] border ${
+                  isSelected
+                    ? "bg-primary-500 border-primary-500"
+                    : "bg-background-cream border-neutral-300"
                 }`}
               >
                 <Typography
                   variant="body2"
                   className={`text-center ${
-                    isSelected ? "text-primary-700" : "text-text-primary"
+                    isSelected ? "text-white" : "text-text-primary"
                   }`}
                 >
                   {slot.time}

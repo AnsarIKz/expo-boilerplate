@@ -105,7 +105,12 @@ export function Button({
         </View>
       )}
 
-      <Text className={textStyles}>{children}</Text>
+      <Text
+        style={{ fontFamily: "SF-Pro-Text", fontSize: 16 }}
+        className={textStyles}
+      >
+        {children}
+      </Text>
     </TouchableOpacity>
   );
 }

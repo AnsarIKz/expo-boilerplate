@@ -10,7 +10,9 @@ import { LocationHeader } from "@/components/ui/LocationHeader";
 import { RestaurantCard } from "@/components/ui/RestaurantCard";
 import { SearchWrapper } from "@/components/ui/SearchWrapper";
 import { FilterChip } from "@/entities/Restaurant";
-import { useRestaurants } from "@/hooks/useRestaurants";
+import { useFilteredRestaurants } from "@/hooks/useFilteredRestaurants";
+import { useCityContext } from "@/providers/CityProvider";
+import { useFiltersContext } from "@/providers/FiltersProvider";
 
 const mockFilterChips: FilterChip[] = [
   { id: "1", label: "Грузинская кухня", isSelected: false, type: "cuisine" },
@@ -22,32 +24,35 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState("");
   const [filterChips, setFilterChips] = useState(mockFilterChips);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { getDisplayName } = useCityContext();
+  const { getActiveFiltersCount } = useFiltersContext();
 
   // Refs для анимации и скролла
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const [showFloatingButtons, setShowFloatingButtons] = useState(false);
 
-  // Используем React Query для загрузки ресторанов
+  // Используем отфильтрованные рестораны
   const {
     data: restaurants = [],
     isLoading,
     error,
     refetch,
-  } = useRestaurants(searchText);
+    hasFilters,
+  } = useFilteredRestaurants(searchText);
 
-  // Мемоизированное фильтрование ресторанов для оптимизации производительности
+  // Мемоизированное фильтрование ресторанов по локальным чипам для оптимизации производительности
   const filteredRestaurants = useMemo(() => {
     if (!restaurants) return [];
 
-    return restaurants.filter((restaurant) => {
+    return restaurants.filter((restaurant: any) => {
       const selectedChipLabels = filterChips
         .filter((chip) => chip.isSelected)
         .map((chip) => chip.label.toLowerCase());
 
       const matchesFilters =
         selectedChipLabels.length === 0 ||
-        restaurant.tags.some((tag) =>
+        restaurant.tags.some((tag: any) =>
           selectedChipLabels.some(
             (chipLabel) =>
               tag.label.toLowerCase().includes(chipLabel) ||
@@ -91,8 +96,7 @@ export default function HomeScreen() {
   }, []);
 
   const handleFilterPress = useCallback(() => {
-    // Handle filter modal opening
-    console.log("Open filter modal");
+    router.push("/filters");
   }, []);
 
   const handleRestaurantPress = useCallback((restaurantId: string) => {
@@ -108,8 +112,7 @@ export default function HomeScreen() {
   }, []);
 
   const handleLocationPress = useCallback(() => {
-    // Handle location selection
-    console.log("Location pressed");
+    router.push("/city-selector");
   }, []);
 
   // Рендер списка ресторанов
@@ -140,7 +143,7 @@ export default function HomeScreen() {
 
     return (
       <View>
-        {filteredRestaurants.map((restaurant) => (
+        {filteredRestaurants.map((restaurant: any) => (
           <RestaurantCard
             key={restaurant.id}
             restaurant={restaurant}
@@ -157,10 +160,12 @@ export default function HomeScreen() {
         {/* Fixed Header with animated buttons */}
 
         <LocationHeader
+          city={getDisplayName()}
           onPress={handleLocationPress}
           showFloatingButtons={showFloatingButtons}
           onSearchPress={scrollToSearch}
-          onFilterPress={scrollToFilters}
+          onFilterPress={handleFilterPress}
+          activeFiltersCount={getActiveFiltersCount()}
         />
 
         {/* Scrollable Content including Search and Filters */}

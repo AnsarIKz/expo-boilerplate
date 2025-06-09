@@ -195,7 +195,7 @@ export default function RestaurantDetailScreen() {
     : [restaurant.image];
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-background-cream">
       {/* Header with Back Button - используем стандартные отступы */}
       <View
         className="absolute left-6 right-6 z-50 flex-row justify-between"
@@ -272,14 +272,14 @@ export default function RestaurantDetailScreen() {
         </Animated.View>
 
         {/* Content - используем Card компонент */}
-        <View className="flex-1" style={{ marginTop: -32 }}>
+        <View className="flex-1 bg-background-cream" style={{ marginTop: -32 }}>
           <Card
             variant="elevated"
             padding="none"
             className="rounded-t-3xl bg-background-secondary"
           >
             {/* Основной контент с правильными отступами */}
-            <View className="px-4 py-4">
+            <View className="px-4 py-4 bg-background-cream">
               {/* Restaurant Name */}
               <View className="mb-3">
                 <Typography variant="h3" className="text-text-primary">
@@ -288,7 +288,7 @@ export default function RestaurantDetailScreen() {
               </View>
 
               {/* Rating and Price */}
-              <View className="flex-row items-center mb-4">
+              <View className="flex-row items-center mb-4 bg-background-cream">
                 <Ionicons name="star" size={16} color={Colors.star} />
                 <Typography
                   variant="body1"
@@ -305,13 +305,17 @@ export default function RestaurantDetailScreen() {
               </View>
 
               {/* Tags */}
-              <View className="mb-2">
+              <View className="mb-2 ">
                 <RestaurantTags restaurant={restaurant} variant="detailed" />
               </View>
             </View>
 
             {/* Contact Info Card */}
-            <Card variant="outlined" padding="md" className="mx-4 mb-4">
+            <Card
+              variant="elevated"
+              padding="md"
+              className="mx-4 mb-4 bg-background-cream"
+            >
               {/* Address */}
               <View className="flex-row items-start mb-3">
                 <Ionicons
@@ -357,10 +361,14 @@ export default function RestaurantDetailScreen() {
                 </TouchableOpacity>
               )}
             </Card>
-
+            <View className="h-4 bg-black-500" />
             {/* About Section */}
             {restaurant.description && (
-              <Card variant="outlined" padding="md" className="mx-4 mb-4">
+              <Card
+                variant="elevated"
+                padding="md"
+                className="mx-4 mb-4 bg-background-cream"
+              >
                 <Typography variant="h5" className="text-text-primary mb-3">
                   About this restaurant
                 </Typography>
@@ -394,7 +402,7 @@ export default function RestaurantDetailScreen() {
       </Animated.ScrollView>
 
       {/* Fixed Bottom Button - используем стандартные отступы */}
-      <View className="absolute bottom-0 left-0 right-0 bg-background-primary px-4 pb-6 pt-3 border-t border-border-light">
+      <View className="absolute bottom-0 left-0 right-0 bg-background px-4 pb-6 pt-3 border-t border-border-light">
         <SafeAreaView edges={["bottom"]}>
           <Button
             variant="primary"

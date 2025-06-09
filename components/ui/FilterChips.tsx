@@ -35,14 +35,14 @@ export function FilterChips({
           key={chip.id}
           className={`px-4 rounded-[10px] border h-[42px] justify-center items-center ${
             chip.isSelected
-              ? "bg-primary-500 border-primary-500"
+              ? "bg-background-cream border-primary-500"
               : "bg-white border-neutral-400"
           }`}
           onPress={() => onChipPress(chip.id)}
         >
           <Text
             className={`text-[15px] font-sf-pro ${
-              chip.isSelected ? "text-white" : "text-neutral-900"
+              chip.isSelected ? "text-primary-500" : "text-neutral-900"
             }`}
           >
             {chip.label}

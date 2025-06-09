@@ -122,7 +122,7 @@ export function DateSelector({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowCalendar(false)}
       >
-        <View className="flex-1 bg-background-primary">
+        <View className="flex-1 bg-background-cream">
           <View className="px-4 py-6 border-b border-border-light">
             <View className="flex-row items-center justify-between">
               <Typography variant="h5" className="text-text-primary">
@@ -260,16 +260,18 @@ export function DateSelector({
                 activeOpacity={0.7}
               >
                 <Card
-                  variant={isSelected ? "elevated" : "outlined"}
+                  variant="outlined"
                   padding="sm"
-                  className={`min-w-[80px] ${
-                    isSelected ? "bg-primary-100 border-primary-300" : ""
+                  className={`min-w-[80px] border ${
+                    isSelected
+                      ? "bg-primary-500 border-primary-500"
+                      : "bg-background-cream border-neutral-300"
                   }`}
                 >
                   <Typography
                     variant="caption"
                     className={`text-center ${
-                      isSelected ? "text-primary-700" : "text-text-primary"
+                      isSelected ? "text-white" : "text-text-primary"
                     }`}
                   >
                     {dateOption.label}

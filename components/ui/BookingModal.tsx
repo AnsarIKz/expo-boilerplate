@@ -147,14 +147,18 @@ export function BookingModal({
   };
 
   const renderDateTimeStep = () => (
-    <View className="flex-1">
+    <View className="flex-1 bg-background-cream">
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         <View className="pt-6 pb-4">
           <Typography variant="h5" className="text-text-primary mb-6">
             Table reservation
           </Typography>
 
-          <Card variant="outlined" padding="md" className="mb-6">
+          <Card
+            variant="outlined"
+            padding="md"
+            className="mb-6 bg-background-cream border-neutral-300"
+          >
             <SimpleGuestSelector
               value={guests}
               onChange={setGuests}
@@ -164,14 +168,22 @@ export function BookingModal({
             />
           </Card>
 
-          <Card variant="outlined" padding="md" className="mb-6">
+          <Card
+            variant="outlined"
+            padding="md"
+            className="mb-6 bg-background-cream border-neutral-300"
+          >
             <DateSelector
               selectedDate={selectedDate}
               onDateChange={setSelectedDate}
             />
           </Card>
 
-          <Card variant="outlined" padding="md" className="mb-6">
+          <Card
+            variant="outlined"
+            padding="md"
+            className="mb-6 bg-background-cream border-neutral-300"
+          >
             <TimeSlotSelector
               timeSlots={timeSlots}
               selectedTime={selectedTime}
@@ -243,7 +255,11 @@ export function BookingModal({
             />
           </View>
 
-          <Card variant="outlined" padding="md" className="mt-6">
+          <Card
+            variant="outlined"
+            padding="md"
+            className="mt-6 bg-background-cream border-neutral-300"
+          >
             <Typography variant="h6" className="text-text-primary mb-3">
               Booking Summary
             </Typography>
@@ -326,7 +342,7 @@ export function BookingModal({
       onRequestClose={handleClose}
     >
       <SafeAreaView
-        className="flex-1 bg-background-primary"
+        className="flex-1 bg-background-cream"
         edges={["top", "bottom"]}
       >
         {/* Header */}

@@ -23,10 +23,10 @@ export function SearchBar({
   autoFocus = false,
 }: SearchBarProps) {
   return (
-    <View className="flex-row items-center bg-white rounded-xl border border-neutral-400 px-4 py-3 mx-4 h-[46px] shadow-sm">
+    <View className="flex-row bg-white rounded-xl border border-neutral-400 px-4 mx-4 h-[46px] items-center">
       <Ionicons name="search" size={20} color="#a5a5a5" />
       <TextInput
-        className="flex-1 text-[15px] font-sf-pro text-text-primary ml-3"
+        className="flex-1 text-[15px] text-text-primary ml-3 h-full"
         placeholder={placeholder}
         placeholderTextColor="#a5a5a5"
         value={value}

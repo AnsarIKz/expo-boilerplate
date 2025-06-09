@@ -1,216 +1,179 @@
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useMemo, useState } from "react";
+import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from "@/components/tokens";
-import { Card } from "@/components/ui/Card";
+import { BookingCard } from "@/components/ui/BookingCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
+import { useRestaurants } from "@/hooks/useRestaurants";
 import { useBookingStore } from "@/stores/bookingStore";
 import { Booking } from "@/types/booking";
-import { Ionicons } from "@expo/vector-icons";
 
 export default function BookingsScreen() {
-  const { bookings, isLoading, cancelBooking } = useBookingStore();
+  const { bookings, cancelBooking } = useBookingStore();
+  const { data: restaurants = [] } = useRestaurants();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleCancelBooking = (booking: Booking) => {
-    Alert.alert(
-      "Cancel Booking",
-      `Are you sure you want to cancel your booking at ${booking.restaurantName}?`,
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes, Cancel",
-          style: "destructive",
-          onPress: () => {
-            cancelBooking(booking.id);
-            Alert.alert(
-              "Booking Cancelled",
-              "Your booking has been cancelled."
-            );
+  // Сортировка бронирований по дате
+  const sortedBookings = useMemo(() => {
+    return [...bookings].sort((a, b) => {
+      const dateA = new Date(`${a.date} ${a.time}`);
+      const dateB = new Date(`${b.date} ${b.time}`);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [bookings]);
+
+  // Группировка бронирований
+  const groupedBookings = useMemo(() => {
+    const upcoming = sortedBookings.filter((booking) => {
+      const bookingDate = new Date(`${booking.date} ${booking.time}`);
+      return bookingDate >= new Date() && booking.status === "confirmed";
+    });
+
+    const past = sortedBookings.filter((booking) => {
+      const bookingDate = new Date(`${booking.date} ${booking.time}`);
+      return bookingDate < new Date() || booking.status === "cancelled";
+    });
+
+    return { upcoming, past };
+  }, [sortedBookings]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Симуляция обновления данных
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setRefreshing(false);
+  }, []);
+
+  const handleBookingPress = useCallback((booking: Booking) => {
+    // Здесь можно открыть детали бронирования
+    console.log("Booking pressed:", booking);
+  }, []);
+
+  const handleCancelBooking = useCallback(
+    (booking: Booking) => {
+      Alert.alert(
+        "Отменить бронирование",
+        `Вы уверены, что хотите отменить бронирование в ${booking.restaurantName}?`,
+        [
+          { text: "Назад", style: "cancel" },
+          {
+            text: "Отменить",
+            style: "destructive",
+            onPress: () => {
+              cancelBooking(booking.id);
+              Alert.alert(
+                "Бронирование отменено",
+                "Ваше бронирование было успешно отменено."
+              );
+            },
           },
-        },
-      ]
-    );
-  };
+        ]
+      );
+    },
+    [cancelBooking]
+  );
 
-  const renderBookingCard = (booking: Booking) => {
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case "confirmed":
-          return "text-success-main";
-        case "pending":
-          return "text-warning-main";
-        case "cancelled":
-          return "text-error-main";
-        default:
-          return "text-neutral-500";
-      }
-    };
+  const getRestaurantById = useCallback(
+    (id: string) => {
+      return restaurants.find((r) => r.id === id);
+    },
+    [restaurants]
+  );
 
-    const getStatusText = (status: string) => {
-      switch (status) {
-        case "confirmed":
-          return "Confirmed";
-        case "pending":
-          return "Pending";
-        case "cancelled":
-          return "Cancelled";
-        default:
-          return status;
-      }
-    };
-
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    };
-
-    const canCancel =
-      booking.status === "confirmed" || booking.status === "pending";
-    const isPast = new Date(booking.date) < new Date();
-
+  if (bookings.length === 0) {
     return (
-      <Card
-        key={booking.id}
-        variant="elevated"
-        padding="md"
-        className="mx-4 mb-4"
-      >
-        <View className="flex-row justify-between items-start mb-3">
-          <Typography variant="h6" className="flex-1 mr-2">
-            {booking.restaurantName}
-          </Typography>
-          <Typography
-            variant="caption"
-            className={`font-medium ${getStatusColor(booking.status)}`}
-          >
-            {getStatusText(booking.status)}
-          </Typography>
-        </View>
+      <SafeAreaView className="flex-1 bg-background-primary">
+        <TitleHeader title="Бронирования" />
 
-        <View className="space-y-2 mb-4">
-          <View className="flex-row items-center">
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={Colors.neutral[500]}
-            />
-            <Typography variant="body2" className="ml-2">
-              {formatDate(booking.date)}
-            </Typography>
-          </View>
-
-          <View className="flex-row items-center">
-            <Ionicons
-              name="time-outline"
-              size={16}
-              color={Colors.neutral[500]}
-            />
-            <Typography variant="body2" className="ml-2">
-              {booking.time}
-            </Typography>
-          </View>
-
-          <View className="flex-row items-center">
-            <Ionicons
-              name="people-outline"
-              size={16}
-              color={Colors.neutral[500]}
-            />
-            <Typography variant="body2" className="ml-2">
-              {booking.guests} {booking.guests === 1 ? "guest" : "guests"}
-            </Typography>
-          </View>
-
-          {booking.customerName && (
-            <View className="flex-row items-center">
-              <Ionicons
-                name="person-outline"
-                size={16}
-                color={Colors.neutral[500]}
-              />
-              <Typography variant="body2" className="ml-2">
-                {booking.customerName}
-              </Typography>
-            </View>
-          )}
-
-          {booking.customerPhone && (
-            <View className="flex-row items-center">
-              <Ionicons
-                name="call-outline"
-                size={16}
-                color={Colors.neutral[500]}
-              />
-              <Typography variant="body2" className="ml-2">
-                {booking.customerPhone}
-              </Typography>
-            </View>
-          )}
-
-          {booking.comment && (
-            <View className="flex-row items-start">
-              <Ionicons
-                name="chatbubble-outline"
-                size={16}
-                color={Colors.neutral[500]}
-                style={{ marginTop: 2 }}
-              />
-              <Typography variant="body2" className="ml-2 flex-1">
-                {booking.comment}
-              </Typography>
-            </View>
-          )}
-        </View>
-
-        {canCancel && !isPast && (
-          <TouchableOpacity
-            onPress={() => handleCancelBooking(booking)}
-            className="mt-2 py-2 px-3 bg-error-light/10 rounded-lg border border-error-light"
-            activeOpacity={0.7}
-          >
-            <Typography variant="body2" className="text-error-main text-center">
-              Cancel Booking
-            </Typography>
-          </TouchableOpacity>
-        )}
-      </Card>
+        <EmptyState
+          title="Нет бронирований"
+          subtitle="У вас пока нет забронированных столиков. Выберите ресторан и сделайте бронирование!"
+          iconName="calendar-outline"
+        />
+      </SafeAreaView>
     );
-  };
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background-primary">
       {/* Header */}
-
       <TitleHeader title="Бронирования" />
 
-      {/* Content */}
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={
-          bookings.length === 0 && !isLoading
-            ? { flexGrow: 1, paddingBottom: 20 }
-            : { paddingBottom: 20 }
-        }
-      >
-        {isLoading ? (
-          <LoadingSpinner text="Loading bookings..." />
-        ) : bookings.length === 0 ? (
-          <EmptyState
-            title="No bookings yet"
-            subtitle="Book a table at your favorite restaurant to see your reservations here"
-            iconName="calendar-outline"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#bd561c"
+            colors={["#bd561c"]}
           />
-        ) : (
-          <View className="pt-2">{bookings.map(renderBookingCard)}</View>
+        }
+        contentContainerStyle={{
+          paddingBottom: 20,
+        }}
+      >
+        {/* Предстоящие бронирования */}
+        {groupedBookings.upcoming.length > 0 && (
+          <View className="px-4 py-4">
+            <View className="flex-row items-center mb-4">
+              <Ionicons name="time-outline" size={20} color="#bd561c" />
+              <Typography
+                variant="h6"
+                className="text-text-primary font-semibold ml-2"
+              >
+                Предстоящие
+              </Typography>
+            </View>
+
+            <View className="space-y-3">
+              {groupedBookings.upcoming.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  restaurant={getRestaurantById(booking.restaurantId)}
+                  onPress={handleBookingPress}
+                  onCancel={handleCancelBooking}
+                  showActions={true}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Прошедшие/отмененные бронирования */}
+        {groupedBookings.past.length > 0 && (
+          <View className="px-4 py-4">
+            <View className="flex-row items-center mb-4">
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#737373"
+              />
+              <Typography
+                variant="h6"
+                className="text-text-secondary font-semibold ml-2"
+              >
+                История
+              </Typography>
+            </View>
+
+            <View className="space-y-3">
+              {groupedBookings.past.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  restaurant={getRestaurantById(booking.restaurantId)}
+                  onPress={handleBookingPress}
+                  showActions={false}
+                />
+              ))}
+            </View>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
