@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useEffect, useState } from "react";
-import { Alert, Modal, ScrollView, View } from "react-native";
+import { Alert, Modal, ScrollView, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/components/tokens";
 import { AuthRequired } from "@/components/ui/AuthRequired";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -21,15 +22,14 @@ const ProfileMenuItem = ({
 }: {
   icon: keyof typeof Ionicons.glyphMap;
 
-  
   title: string;
   subtitle?: string;
   onPress: () => void;
   showArrow?: boolean;
 }) => (
-  <Card variant="outlined" padding="md" onPress={onPress} className="mb-3 mx-4">
+  <Card variant="ghost" padding="md" onPress={onPress} className="mb-3 mx-4">
     <View className="flex-row items-center">
-      <View className="w-10 h-10 bg-primary-50 rounded-full items-center justify-center mr-3">
+      <View className="w-10 h-10  rounded-full items-center justify-center mr-3">
         <Ionicons name={icon} size={20} color={Colors.primary[500]} />
       </View>
 
@@ -103,28 +103,12 @@ export default function ProfileScreen() {
   if (!isAuthenticated) {
     return (
       <SafeAreaView className="flex-1 bg-background-primary">
-        {/* Header - Fixed */}
-        <View className="px-4 pt-2 pb-6 items-center border-b border-border-light">
-          <Button
-            variant="primary"
-            size="sm"
-            onPress={handleLogin}
-            className="min-w-32"
-          >
-            <Typography variant="body1" color="inverse">
-              Войти
-            </Typography>
-          </Button>
-        </View>
-
+        <TitleHeader title="Профиль" />
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {/* Header */}
-          <View className="px-4 pt-2 pb-6 items-center"></View>
-
           {/* User Info Card */}
           <Card variant="ghost" padding="lg" className="mx-4 mb-6 mt-6">
             <View className="items-center">
@@ -146,7 +130,7 @@ export default function ProfileScreen() {
           </Card>
 
           {/* Menu Items */}
-          <View className="mb-6">
+          <View className="mb-6 bg-background-cream">
             <ProfileMenuItem
               icon="settings-outline"
               title="Настройки"
@@ -171,7 +155,7 @@ export default function ProfileScreen() {
 
           {/* Info Card */}
           <Card variant="ghost" padding="md" className="mx-4">
-            <View className="items-center">
+            <TouchableOpacity onPress={handleLogin} className="items-center">
               <Ionicons
                 name="person-add-outline"
                 size={32}
@@ -180,18 +164,15 @@ export default function ProfileScreen() {
               />
               <Typography
                 variant="subtitle1"
-                className="text-text-primary mb-2 text-center"
+                className="text-text-primary mb-2"
+                align="center"
               >
-                Войдите в аккаунт
+                Нажмите для входа
               </Typography>
-              <Typography
-                variant="body2"
-                color="secondary"
-                className="text-center"
-              >
-                Получите доступ ко всем функциям приложения
+              <Typography variant="body2" color="secondary" align="center">
+                Для получения доступа ко всем функциям приложения
               </Typography>
-            </View>
+            </TouchableOpacity>
           </Card>
         </ScrollView>
 

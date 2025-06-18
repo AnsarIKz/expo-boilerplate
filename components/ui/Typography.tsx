@@ -25,10 +25,13 @@ export type TypographyColor =
   | "error"
   | "info";
 
+export type TypographyAlign = "left" | "center" | "right" | "justify";
+
 interface TypographyProps {
   children: ReactNode;
   variant?: TypographyVariant;
   color?: TypographyColor;
+  align?: TypographyAlign;
   className?: string;
   numberOfLines?: number;
 }
@@ -86,22 +89,35 @@ const getColorStyles = (color: TypographyColor) => {
   return styles[color];
 };
 
+const getAlignStyles = (align: TypographyAlign) => {
+  const styles = {
+    left: "text-left",
+    center: "text-center",
+    right: "text-right",
+    justify: "text-justify",
+  };
+
+  return styles[align];
+};
+
 export function Typography({
   children,
   variant = "body1",
   color = "primary",
+  align,
   className = "",
   numberOfLines,
 }: TypographyProps) {
   const variantStyles = getVariantStyles(variant);
   const colorStyles = getColorStyles(color);
+  const alignStyles = align ? getAlignStyles(align) : "";
   const fontWeight = getVariantFontWeight(variant);
 
   return (
     <Text
-      className={`${variantStyles} ${colorStyles} ${className}`}
       style={{ fontWeight }}
       numberOfLines={numberOfLines}
+      className={`${variantStyles} ${colorStyles} ${alignStyles} ${className}`}
     >
       {children}
     </Text>
