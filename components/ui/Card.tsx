@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-export type CardVariant = "elevated" | "outlined" | "filled";
+export type CardVariant = "elevated" | "outlined" | "filled" | "ghost";
 export type CardPadding = "none" | "sm" | "md" | "lg";
 
 interface CardProps {
@@ -28,6 +28,7 @@ const getCardStyles = (variant: CardVariant, padding: CardPadding) => {
     elevated: "bg-background-cream",
     outlined: "bg-white border border-neutral-200",
     filled: "bg-neutral-50",
+    ghost: "", // No background
   };
 
   return `${baseStyles} ${paddingStyles[padding]} ${variantStyles[variant]}`;

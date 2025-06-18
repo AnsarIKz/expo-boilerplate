@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Modal,
@@ -7,11 +8,16 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../tokens";
 import { CountrySelector, type Country } from "./CountrySelector";
 import { SmsCodeInput } from "./SmsCodeInput";
 import { Typography } from "./Typography";
 
-export function AuthRequired() {
+interface AuthRequiredProps {
+  onClose?: () => void;
+}
+
+export function AuthRequired({ onClose }: AuthRequiredProps) {
   const [phoneNumber, setPhoneNumber] = useState("00 101 61 10");
   const [isCountrySelectorVisible, setIsCountrySelectorVisible] =
     useState(false);
@@ -62,12 +68,24 @@ export function AuthRequired() {
       <SafeAreaView className="flex-1">
         {/* Header Title */}
         <View className="px-4 pt-[16px]">
-          <Typography
-            variant="subtitle1"
-            className="text-black text-[17px] font-bold"
-          >
-            Авторизация
-          </Typography>
+          <View className="flex-row items-center justify-between">
+            <Typography
+              variant="subtitle1"
+              className="text-black text-[17px] font-bold"
+            >
+              Авторизация
+            </Typography>
+
+            {onClose && (
+              <TouchableOpacity
+                onPress={onClose}
+                className="w-8 h-8 items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={24} color={Colors.neutral[600]} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Content */}
