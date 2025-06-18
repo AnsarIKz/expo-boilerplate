@@ -3,6 +3,7 @@ import { Booking } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
 import { Image, TouchableOpacity, View } from "react-native";
 import { Colors } from "../tokens";
+import { Card } from "./Card";
 import { Typography } from "./Typography";
 
 interface BookingCardProps {
@@ -67,13 +68,13 @@ export function BookingCard({
   const getStatusText = (status: Booking["status"]) => {
     switch (status) {
       case "confirmed":
-        return "✓";
+        return "Подтверждено";
       case "pending":
-        return "⏳";
+        return "Ожидание";
       case "cancelled":
-        return "✕";
+        return "Отменено";
       default:
-        return "?";
+        return "Неизвестно";
     }
   };
 
@@ -82,100 +83,84 @@ export function BookingCard({
     "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop";
 
   return (
-    <TouchableOpacity
+    <Card
+      variant="elevated"
+      padding="none"
       onPress={() => onPress?.(booking)}
-      activeOpacity={0.7}
-      disabled={!onPress}
+      className="overflow-hidden"
     >
-      <View
-        className="bg-background-cream border border-background-cream rounded-xl overflow-hidden"
-        style={{
-          backgroundColor: "#fffaea",
-          borderColor: "#fffaea",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
-          elevation: 2,
-        }}
-      >
-        <View className="flex-row h-24">
-          {/* Изображение ресторана */}
-          <View className="w-20 h-full relative">
-            <Image
-              source={{ uri: restaurantImage }}
-              className="w-full h-full"
-              style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}
-              resizeMode="cover"
-            />
-            {/* Статус бейдж на изображении */}
-            <View className="absolute top-1 right-1">
-              <View
-                className="w-6 h-6 rounded-full items-center justify-center"
-                style={{ backgroundColor: getStatusColor(booking.status) }}
+      <View className="flex-row">
+        {/* Изображение ресторана */}
+        <View className="w-24 h-24 relative">
+          <Image
+            source={{ uri: restaurantImage }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+          {/* Статус бейдж */}
+          <View className="absolute top-2 left-2">
+            <View
+              className="px-2 py-1 rounded-full"
+              style={{ backgroundColor: getStatusColor(booking.status) }}
+            >
+              <Typography variant="caption" className="text-white font-medium">
+                {getStatusText(booking.status)}
+              </Typography>
+            </View>
+          </View>
+        </View>
+
+        {/* Контент */}
+        <View className="flex-1 p-4">
+          {/* Заголовок */}
+          <View className="flex-row items-start justify-between mb-2">
+            <View className="flex-1 mr-3">
+              <Typography
+                variant="subtitle1"
+                className="text-text-primary font-semibold"
+                numberOfLines={1}
               >
+                {booking.restaurantName}
+              </Typography>
+              {restaurant?.location?.address && (
                 <Typography
-                  variant="caption"
-                  className="text-white font-bold text-xs"
+                  variant="body2"
+                  color="secondary"
+                  numberOfLines={1}
+                  className="mt-1"
                 >
-                  {getStatusText(booking.status)}
+                  {restaurant.location.address}
                 </Typography>
-              </View>
+              )}
             </View>
           </View>
 
-          {/* Контент */}
-          <View className="flex-1 p-3">
-            {/* Заголовок */}
-            <View className="flex-row items-start justify-between mb-2">
-              <View className="flex-1 mr-2">
-                <Typography
-                  variant="body1"
-                  className="text-text-primary font-bold"
-                  numberOfLines={1}
-                >
-                  {booking.restaurantName}
-                </Typography>
-                {restaurant?.location?.address && (
-                  <Typography
-                    variant="caption"
-                    className="text-text-secondary"
-                    numberOfLines={1}
-                  >
-                    {restaurant.location.address}
-                  </Typography>
-                )}
-              </View>
-            </View>
-
-            {/* Основная информация */}
-            <View className="flex-row items-center justify-between">
-              {/* Дата и время */}
-              <View className="flex-row items-center flex-1">
+          {/* Информация о бронировании */}
+          <View className="flex-row items-center justify-between mb-2">
+            {/* Дата и время */}
+            <View className="flex-row items-center">
+              <View className="flex-row items-center mr-4">
                 <Ionicons
                   name="calendar-outline"
-                  size={14}
+                  size={16}
                   color={Colors.primary[500]}
                 />
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   className="text-text-primary ml-1 font-medium"
                 >
                   {formatDate(booking.date)}
                 </Typography>
-                <Typography
-                  variant="caption"
-                  className="text-text-secondary mx-1"
-                >
-                  •
-                </Typography>
+              </View>
+
+              <View className="flex-row items-center mr-4">
                 <Ionicons
                   name="time-outline"
-                  size={14}
+                  size={16}
                   color={Colors.primary[500]}
                 />
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   className="text-text-primary ml-1 font-medium"
                 >
                   {booking.time}
@@ -186,49 +171,49 @@ export function BookingCard({
               <View className="flex-row items-center">
                 <Ionicons
                   name="people-outline"
-                  size={14}
+                  size={16}
                   color={Colors.primary[500]}
                 />
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   className="text-text-primary ml-1 font-medium"
                 >
                   {booking.guests}
                 </Typography>
               </View>
             </View>
-
-            {/* Комментарий (если есть и помещается) */}
-            {booking.comment && (
-              <Typography
-                variant="caption"
-                className="text-text-secondary mt-1"
-                numberOfLines={1}
-              >
-                💬 {booking.comment}
-              </Typography>
-            )}
           </View>
 
-          {/* Действия */}
-          {showActions && booking.status === "confirmed" && onCancel && (
-            <View className="justify-center pr-2">
-              <TouchableOpacity
-                onPress={() => onCancel(booking)}
-                className="w-9 h-9 items-center justify-center rounded-xl"
-                style={{ backgroundColor: `${Colors.error.main}20` }}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={18}
-                  color={Colors.error.main}
-                />
-              </TouchableOpacity>
-            </View>
+          {/* Комментарий */}
+          {booking.comment && (
+            <Typography
+              variant="body2"
+              color="secondary"
+              numberOfLines={2}
+              className="mt-1"
+            >
+              💬 {booking.comment}
+            </Typography>
           )}
         </View>
+
+        {/* Действия */}
+        {showActions && booking.status === "confirmed" && onCancel && (
+          <View className="justify-center pr-4">
+            <TouchableOpacity
+              onPress={() => onCancel(booking)}
+              className="w-10 h-10 items-center justify-center rounded-xl bg-error-50"
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={Colors.error.main}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-    </TouchableOpacity>
+    </Card>
   );
 }

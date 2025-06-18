@@ -104,8 +104,8 @@ export function BookingModal({
   const handleDateTimeNext = () => {
     if (!selectedTime) {
       Alert.alert(
-        "Please select a time",
-        "You need to select an available time slot to continue."
+        "Выберите время",
+        "Необходимо выбрать доступное время для продолжения."
       );
       return;
     }
@@ -114,12 +114,15 @@ export function BookingModal({
 
   const handleSubmit = async () => {
     if (!customerName.trim()) {
-      Alert.alert("Name required", "Please enter your name.");
+      Alert.alert("Требуется имя", "Пожалуйста, введите ваше имя.");
       return;
     }
 
     if (!customerPhone.trim()) {
-      Alert.alert("Phone required", "Please enter your phone number.");
+      Alert.alert(
+        "Требуется телефон",
+        "Пожалуйста, введите ваш номер телефона."
+      );
       return;
     }
 
@@ -140,50 +143,41 @@ export function BookingModal({
       await onSubmit(booking);
       handleClose();
     } catch (error) {
-      Alert.alert("Booking failed", "Something went wrong. Please try again.");
+      Alert.alert(
+        "Ошибка бронирования",
+        "Что-то пошло не так. Попробуйте снова."
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const renderDateTimeStep = () => (
-    <View className="flex-1 bg-background-cream">
+    <View className="flex-1 bg-background-primary">
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         <View className="pt-6 pb-4">
           <Typography variant="h5" className="text-text-primary mb-6">
-            Table reservation
+            Бронирование столика
           </Typography>
 
-          <Card
-            variant="outlined"
-            padding="md"
-            className="mb-6 bg-background-cream border-neutral-300"
-          >
+          <Card variant="elevated" padding="md" className="mb-4">
             <SimpleGuestSelector
               value={guests}
               onChange={setGuests}
               min={1}
               max={10}
-              label="Number of guests"
+              label="Количество гостей"
             />
           </Card>
 
-          <Card
-            variant="outlined"
-            padding="md"
-            className="mb-6 bg-background-cream border-neutral-300"
-          >
+          <Card variant="elevated" padding="md" className="mb-4">
             <DateSelector
               selectedDate={selectedDate}
               onDateChange={setSelectedDate}
             />
           </Card>
 
-          <Card
-            variant="outlined"
-            padding="md"
-            className="mb-6 bg-background-cream border-neutral-300"
-          >
+          <Card variant="elevated" padding="md" className="mb-6">
             <TimeSlotSelector
               timeSlots={timeSlots}
               selectedTime={selectedTime}
@@ -193,7 +187,7 @@ export function BookingModal({
         </View>
       </ScrollView>
 
-      <View className="px-4 pb-6 border-t border-border-light pt-4">
+      <View className="px-4 pb-6 border-t border-border-light pt-4 bg-background-primary">
         <Button
           variant="primary"
           size="lg"
@@ -201,32 +195,32 @@ export function BookingModal({
           onPress={handleDateTimeNext}
           disabled={!selectedTime}
         >
-          Continue
+          Продолжить
         </Button>
       </View>
     </View>
   );
 
   const renderDetailsStep = () => (
-    <View className="flex-1">
+    <View className="flex-1 bg-background-primary">
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         <View className="pt-6 pb-4">
           <Typography variant="h5" className="text-text-primary mb-6">
-            Your details
+            Ваши данные
           </Typography>
 
           <View className="space-y-4">
             <Input
-              label="Full Name"
+              label="Полное имя"
               value={customerName}
               onChangeText={setCustomerName}
-              placeholder="Enter your full name"
+              placeholder="Введите ваше полное имя"
               autoCapitalize="words"
               leftIcon="person-outline"
             />
 
             <Input
-              label="Phone Number"
+              label="Номер телефона"
               value={customerPhone}
               onChangeText={setCustomerPhone}
               placeholder="+7 (___) ___-__-__"
@@ -235,7 +229,7 @@ export function BookingModal({
             />
 
             <Input
-              label="Email (optional)"
+              label="Email (необязательно)"
               value={customerEmail}
               onChangeText={setCustomerEmail}
               placeholder="your.email@example.com"
@@ -245,39 +239,35 @@ export function BookingModal({
             />
 
             <Input
-              label="Special requests (optional)"
+              label="Особые пожелания (необязательно)"
               value={comment}
               onChangeText={setComment}
-              placeholder="Any special requests or allergies..."
+              placeholder="Особые пожелания или аллергии..."
               multiline
               numberOfLines={3}
               leftIcon="chatbubble-outline"
             />
           </View>
 
-          <Card
-            variant="outlined"
-            padding="md"
-            className="mt-6 bg-background-cream border-neutral-300"
-          >
+          <Card variant="elevated" padding="md" className="mt-6">
             <Typography variant="h6" className="text-text-primary mb-3">
-              Booking Summary
+              Сводка бронирования
             </Typography>
             <View className="space-y-2">
               <View className="flex-row justify-between">
-                <Typography variant="body2" className="text-text-secondary">
-                  Restaurant:
+                <Typography variant="body2" color="secondary">
+                  Ресторан:
                 </Typography>
                 <Typography variant="body2" className="text-text-primary">
                   {restaurant.name}
                 </Typography>
               </View>
               <View className="flex-row justify-between">
-                <Typography variant="body2" className="text-text-secondary">
-                  Date:
+                <Typography variant="body2" color="secondary">
+                  Дата:
                 </Typography>
                 <Typography variant="body2" className="text-text-primary">
-                  {new Date(selectedDate).toLocaleDateString("en-US", {
+                  {new Date(selectedDate).toLocaleDateString("ru-RU", {
                     weekday: "long",
                     month: "long",
                     day: "numeric",
@@ -285,19 +275,24 @@ export function BookingModal({
                 </Typography>
               </View>
               <View className="flex-row justify-between">
-                <Typography variant="body2" className="text-text-secondary">
-                  Time:
+                <Typography variant="body2" color="secondary">
+                  Время:
                 </Typography>
                 <Typography variant="body2" className="text-text-primary">
                   {selectedTime}
                 </Typography>
               </View>
               <View className="flex-row justify-between">
-                <Typography variant="body2" className="text-text-secondary">
-                  Guests:
+                <Typography variant="body2" color="secondary">
+                  Гости:
                 </Typography>
                 <Typography variant="body2" className="text-text-primary">
-                  {guests} {guests === 1 ? "person" : "people"}
+                  {guests}{" "}
+                  {guests === 1
+                    ? "человек"
+                    : guests < 5
+                    ? "человека"
+                    : "человек"}
                 </Typography>
               </View>
             </View>
@@ -305,7 +300,7 @@ export function BookingModal({
         </View>
       </ScrollView>
 
-      <View className="px-4 pb-6 border-t border-border-light pt-4">
+      <View className="px-4 pb-6 border-t border-border-light pt-4 bg-background-primary">
         <Button
           variant="primary"
           size="lg"
@@ -315,7 +310,7 @@ export function BookingModal({
             isSubmitting || !customerName.trim() || !customerPhone.trim()
           }
         >
-          {isSubmitting ? "Booking..." : "Confirm Booking"}
+          {isSubmitting ? "Бронирование..." : "Подтвердить бронирование"}
         </Button>
       </View>
     </View>
@@ -341,12 +336,9 @@ export function BookingModal({
       presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <SafeAreaView
-        className="flex-1 bg-background-cream"
-        edges={["top", "bottom"]}
-      >
+      <SafeAreaView className="flex-1 bg-background-primary" edges={["top"]}>
         {/* Header */}
-        <View className="px-4 py-4 border-b border-border-light">
+        <View className="px-4 py-4 border-b border-border-light bg-background-primary">
           <View className="flex-row items-center justify-between">
             {canGoBack ? (
               <TouchableOpacity
@@ -365,9 +357,12 @@ export function BookingModal({
               <View className="w-10" />
             )}
 
-            <Typography variant="body1" className="text-text-primary">
-              {step === "datetime" && "Select date & time"}
-              {step === "details" && "Your details"}
+            <Typography
+              variant="subtitle1"
+              className="text-text-primary font-semibold"
+            >
+              {step === "datetime" && "Выбор даты и времени"}
+              {step === "details" && "Ваши данные"}
             </Typography>
 
             <TouchableOpacity

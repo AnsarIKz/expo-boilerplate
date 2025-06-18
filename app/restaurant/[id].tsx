@@ -370,7 +370,7 @@ export default function RestaurantDetailScreen() {
                 className="mx-4 mb-4 bg-background-cream"
               >
                 <Typography variant="h5" className="text-text-primary mb-3">
-                  About this restaurant
+                  О ресторане
                 </Typography>
 
                 <Typography
@@ -387,8 +387,8 @@ export default function RestaurantDetailScreen() {
                     activeOpacity={0.7}
                     className="mt-2"
                   >
-                    <Typography variant="body2" className="text-primary-500">
-                      {showFullDescription ? "Show less" : "Show more"}
+                    <Typography variant="body2" color="primary">
+                      {showFullDescription ? "Скрыть" : "Показать больше"}
                     </Typography>
                   </TouchableOpacity>
                 )}
@@ -402,7 +402,7 @@ export default function RestaurantDetailScreen() {
       </Animated.ScrollView>
 
       {/* Fixed Bottom Button - используем стандартные отступы */}
-      <View className="absolute bottom-0 left-0 right-0 bg-background px-4 pb-6 pt-3 border-t border-border-light">
+      <View className="absolute bottom-0 left-0 right-0 bg-background px-4 pb-6 pt-3 border-t border-border-light bg-background-cream">
         <SafeAreaView edges={["bottom"]}>
           <Button
             variant="primary"
@@ -413,7 +413,7 @@ export default function RestaurantDetailScreen() {
           >
             <View className="flex-row items-center">
               <Text className="text-white ml-2 font-sf-pro font-medium text-base">
-                Book a table
+                Забронировать столик
               </Text>
             </View>
           </Button>
