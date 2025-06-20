@@ -417,20 +417,20 @@ export default function RestaurantDetailScreen() {
               </Text>
             </View>
           </Button>
+          {restaurant && (
+            <BookingModal
+              visible={showBookingModal}
+              onClose={() => setShowBookingModal(false)}
+              restaurant={restaurant}
+              onSubmit={handleBookingSubmit}
+              initialGuests={selectedGuests}
+              startStep="datetime"
+            />
+          )}
         </SafeAreaView>
       </View>
 
       {/* Booking Modal */}
-      {restaurant && (
-        <BookingModal
-          visible={showBookingModal}
-          onClose={() => setShowBookingModal(false)}
-          restaurant={restaurant}
-          onSubmit={handleBookingSubmit}
-          initialGuests={selectedGuests}
-          startStep="datetime"
-        />
-      )}
     </View>
   );
 }

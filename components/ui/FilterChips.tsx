@@ -1,6 +1,6 @@
 import { FilterChip } from "@/types/restaurant";
-import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, Text, TouchableOpacity } from "react-native";
+import { ScrollView } from "react-native";
+import { Chip } from "./Chip";
 
 interface FilterChipsProps {
   chips: FilterChip[];
@@ -21,33 +21,21 @@ export function FilterChips({
       contentContainerStyle={{ gap: 8, paddingRight: 14 }}
     >
       {/* Filter Button */}
-      <TouchableOpacity
-        className="flex-row items-center justify-center bg-primary-500 px-4 rounded-[10px] h-[42px]"
+      <Chip
+        label="Фильтр"
+        variant="filter"
+        icon="options"
         onPress={onFilterPress}
-      >
-        <Ionicons name="options" size={16} color="white" />
-        <Text className="text-white text-[15px] font-sf-pro ml-2">Фильтр</Text>
-      </TouchableOpacity>
+      />
 
       {/* Category Chips */}
       {chips.map((chip) => (
-        <TouchableOpacity
+        <Chip
           key={chip.id}
-          className={`px-4 rounded-[10px] border h-[42px] justify-center items-center ${
-            chip.isSelected
-              ? "bg-background-cream border-primary-500"
-              : "bg-white border-neutral-400"
-          }`}
+          label={chip.label}
+          isSelected={chip.isSelected}
           onPress={() => onChipPress(chip.id)}
-        >
-          <Text
-            className={`text-[15px] font-sf-pro ${
-              chip.isSelected ? "text-primary-500" : "text-neutral-900"
-            }`}
-          >
-            {chip.label}
-          </Text>
-        </TouchableOpacity>
+        />
       ))}
     </ScrollView>
   );

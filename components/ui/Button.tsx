@@ -34,13 +34,13 @@ const getButtonStyles = (
   // Variant styles - как SearchBar
   const variantStyles = {
     primary: disabled
-      ? "bg-neutral-300 border border-neutral-300"
+      ? "bg-background-cream border border-neutral-300"
       : "bg-primary-500 border border-primary-500",
     secondary: disabled
-      ? "bg-neutral-200 border border-neutral-300"
+      ? "bg-background-cream border border-neutral-300"
       : "bg-white border border-neutral-400",
     outline: disabled
-      ? "border border-neutral-300 bg-white"
+      ? "border border-background-cream bg-white"
       : "border border-neutral-400 bg-white",
     ghost: "bg-transparent border-0",
   };
@@ -64,10 +64,10 @@ const getTextStyles = (
 
   // Variant text colors
   const variantTextStyles = {
-    primary: disabled ? "text-neutral-500" : "text-white",
-    secondary: disabled ? "text-neutral-500" : "text-text-primary",
-    outline: disabled ? "text-neutral-500" : "text-text-primary",
-    ghost: disabled ? "text-neutral-500" : "text-primary-500",
+    primary: disabled ? "text-neutral-400" : "text-white",
+    secondary: disabled ? "text-neutral-400" : "text-text-primary",
+    outline: disabled ? "text-neutral-400" : "text-text-primary",
+    ghost: disabled ? "text-neutral-400" : "text-text-primary",
   };
 
   return `${baseStyles} ${sizeStyles[size]} ${variantTextStyles[variant]}`;

@@ -3,43 +3,13 @@ import { useCallback, useMemo, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from "@/components/tokens";
 import { BookingCard } from "@/components/ui/BookingCard";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useBookingStore } from "@/stores/bookingStore";
 import { Booking } from "@/types/booking";
-
-// Компонент заголовка секции
-const SectionHeader = ({
-  icon,
-  title,
-  count,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  count: number;
-}) => (
-  <Card variant="ghost" padding="md" className="mx-4 mb-3">
-    <View className="flex-row items-center justify-between">
-      <View className="flex-row items-center">
-        <View className="w-8 h-8 rounded-full bg-primary-100 items-center justify-center mr-3">
-          <Ionicons name={icon} size={16} color={Colors.primary[500]} />
-        </View>
-        <Typography variant="h6" className="text-text-primary">
-          {title}
-        </Typography>
-      </View>
-      <View className="bg-primary-100 px-2 py-1 rounded-full">
-        <Typography variant="caption" className="text-primary-500 font-medium">
-          {count}
-        </Typography>
-      </View>
-    </View>
-  </Card>
-);
 
 export default function BookingsScreen() {
   const { bookings, cancelBooking } = useBookingStore();
@@ -72,11 +42,13 @@ export default function BookingsScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Симуляция обновления данных
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
   }, []);
 
   const handleBookingPress = useCallback((booking: Booking) => {
+    // Здесь можно открыть детали бронирования
     console.log("Booking pressed:", booking);
   }, []);
 
@@ -113,13 +85,8 @@ export default function BookingsScreen() {
 
   if (bookings.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-background-primary" edges={["top"]}>
-        {/* Header */}
-        <View className="px-4 pb-4 border-b border-border-light">
-          <Typography variant="h4" className="text-text-primary">
-            Бронирования
-          </Typography>
-        </View>
+      <SafeAreaView className="flex-1 bg-background-primary">
+        <TitleHeader title="Бронирования" />
 
         <EmptyState
           title="Нет бронирований"
@@ -131,13 +98,9 @@ export default function BookingsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-primary" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-background-primary">
       {/* Header */}
-      <View className="px-4 pb-4 border-b border-border-light">
-        <Typography variant="h4" className="text-text-primary">
-          Бронирования
-        </Typography>
-      </View>
+      <TitleHeader title="Бронирования" />
 
       <ScrollView
         className="flex-1"
@@ -146,22 +109,28 @@ export default function BookingsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={Colors.primary[500]}
-            colors={[Colors.primary[500]]}
+            tintColor="#bd561c"
+            colors={["#bd561c"]}
           />
         }
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingBottom: 20,
+        }}
       >
         {/* Предстоящие бронирования */}
         {groupedBookings.upcoming.length > 0 && (
-          <View className="mb-6">
-            <SectionHeader
-              icon="time-outline"
-              title="Предстоящие"
-              count={groupedBookings.upcoming.length}
-            />
+          <View className="px-4 py-4">
+            <View className="flex-row items-center mb-4">
+              <Ionicons name="time-outline" size={20} color="#bd561c" />
+              <Typography
+                variant="h6"
+                className="text-text-primary font-semibold ml-2"
+              >
+                Предстоящие
+              </Typography>
+            </View>
 
-            <View className="px-4 space-y-3">
+            <View className="space-y-3">
               {groupedBookings.upcoming.map((booking) => (
                 <BookingCard
                   key={booking.id}
@@ -178,14 +147,22 @@ export default function BookingsScreen() {
 
         {/* Прошедшие/отмененные бронирования */}
         {groupedBookings.past.length > 0 && (
-          <View>
-            <SectionHeader
-              icon="checkmark-circle-outline"
-              title="История"
-              count={groupedBookings.past.length}
-            />
+          <View className="px-4 py-4">
+            <View className="flex-row items-center mb-4">
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#737373"
+              />
+              <Typography
+                variant="h6"
+                className="text-text-secondary font-semibold ml-2"
+              >
+                История
+              </Typography>
+            </View>
 
-            <View className="px-4 space-y-3">
+            <View className="space-y-3">
               {groupedBookings.past.map((booking) => (
                 <BookingCard
                   key={booking.id}

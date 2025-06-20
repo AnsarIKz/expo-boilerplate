@@ -3,14 +3,11 @@ import { useState } from "react";
 import { Alert, Modal, ScrollView, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Restaurant } from "../../entities/Restaurant";
-import { BookingRequest, TimeSlot } from "../../types/booking";
+import { BookingRequest } from "../../types/booking";
 import { Colors } from "../tokens";
 import { Button } from "./Button";
-import { Card } from "./Card";
-import { DateSelector } from "./DateSelector";
+import { Chip } from "./Chip";
 import { Input } from "./Input";
-import { SimpleGuestSelector } from "./SimpleGuestSelector";
-import { TimeSlotSelector } from "./TimeSlotSelector";
 import { Typography } from "./Typography";
 
 interface BookingModalProps {
@@ -22,6 +19,114 @@ interface BookingModalProps {
   startStep?: "datetime" | "details";
 }
 
+const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+const DATE_OPTIONS = [
+  { value: "2024-01-15", label: "Сегодня" },
+  { value: "2024-01-16", label: "Завтра" },
+  { value: "2024-01-17", label: "17 янв" },
+  { value: "2024-01-18", label: "18 янв" },
+  { value: "2024-01-19", label: "19 янв" },
+  { value: "2024-01-20", label: "20 янв" },
+  { value: "2024-01-21", label: "21 янв" },
+];
+
+const TIME_SLOTS = [
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
+  "22:30",
+];
+
+const BookingSummary = ({
+  restaurant,
+  selectedGuests,
+  selectedDate,
+  selectedTime,
+}: {
+  restaurant: Restaurant;
+  selectedGuests: number;
+  selectedDate: string;
+  selectedTime: string;
+}) => {
+  return (
+    <View className="bg-background-cream border border-primary-200 rounded-2xl p-6 mb-6 mx-2">
+      <Typography
+        variant="h6"
+        className="mb-4 text-primary-700 font-semibold text-center"
+      >
+        Детали бронирования
+      </Typography>
+      <View className="space-y-3">
+        <View className="flex-row justify-between items-center">
+          <Typography variant="body2" className="text-neutral-600 font-medium">
+            Ресторан:
+          </Typography>
+          <Typography
+            variant="body2"
+            className="text-neutral-900 font-semibold"
+          >
+            {restaurant.name}
+          </Typography>
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Typography variant="body2" className="text-neutral-600 font-medium">
+            Гостей:
+          </Typography>
+          <Typography
+            variant="body2"
+            className="text-neutral-900 font-semibold"
+          >
+            {selectedGuests}
+          </Typography>
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Typography variant="body2" className="text-neutral-600 font-medium">
+            Дата:
+          </Typography>
+          <Typography
+            variant="body2"
+            className="text-neutral-900 font-semibold"
+          >
+            {DATE_OPTIONS.find((d) => d.value === selectedDate)?.label}
+          </Typography>
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Typography variant="body2" className="text-neutral-600 font-medium">
+            Время:
+          </Typography>
+          <Typography
+            variant="body2"
+            className="text-neutral-900 font-semibold"
+          >
+            {selectedTime}
+          </Typography>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 export function BookingModal({
   visible,
   onClose,
@@ -31,7 +136,7 @@ export function BookingModal({
   startStep = "datetime",
 }: BookingModalProps) {
   const [step, setStep] = useState<"datetime" | "details">(startStep);
-  const [guests, setGuests] = useState(initialGuests);
+  const [selectedGuests, setSelectedGuests] = useState(initialGuests);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -40,59 +145,13 @@ export function BookingModal({
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize with today's date
-  useState(() => {
-    const today = new Date();
-    setSelectedDate(today.toISOString().split("T")[0]);
-  });
-
-  // Mock time slots - in real app this would come from API
-  const getTimeSlots = (date: string): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    const times = [
-      "08:30",
-      "09:00",
-      "10:30",
-      "11:00",
-      "11:30",
-      "13:30",
-      "14:30",
-      "15:00",
-      "16:00",
-      "17:00",
-      "18:00",
-      "19:00",
-      "20:00",
-      "21:00",
-      "21:30",
-      "22:00",
-    ];
-
-    times.forEach((time, index) => {
-      // Mock availability - use consistent seed based on time and date
-      const seed = date + time;
-      const hash = seed.split("").reduce((a, b) => {
-        a = (a << 5) - a + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      const available = Math.abs(hash) % 10 > 2; // ~70% availability
-
-      slots.push({
-        time,
-        available,
-        maxGuests: 8,
-      });
-    });
-
-    return slots;
-  };
-
-  const timeSlots = getTimeSlots(selectedDate);
+  const isDateTimeValid = selectedDate && selectedTime && selectedGuests;
+  const isFormValid = customerName.trim() && customerPhone.trim();
 
   const handleClose = () => {
     setStep(startStep);
-    setGuests(initialGuests);
-    setSelectedDate(new Date().toISOString().split("T")[0]);
+    setSelectedGuests(initialGuests);
+    setSelectedDate("");
     setSelectedTime("");
     setCustomerName("");
     setCustomerPhone("");
@@ -102,89 +161,138 @@ export function BookingModal({
   };
 
   const handleDateTimeNext = () => {
-    if (!selectedTime) {
-      Alert.alert(
-        "Выберите время",
-        "Необходимо выбрать доступное время для продолжения."
-      );
+    if (!isDateTimeValid) {
+      Alert.alert("Ошибка", "Пожалуйста, выберите все параметры бронирования");
       return;
     }
     setStep("details");
   };
 
   const handleSubmit = async () => {
-    if (!customerName.trim()) {
-      Alert.alert("Требуется имя", "Пожалуйста, введите ваше имя.");
-      return;
-    }
-
-    if (!customerPhone.trim()) {
-      Alert.alert(
-        "Требуется телефон",
-        "Пожалуйста, введите ваш номер телефона."
-      );
+    if (!isFormValid) {
+      Alert.alert("Ошибка", "Пожалуйста, заполните все обязательные поля");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const booking: BookingRequest = {
+      const bookingRequest: BookingRequest = {
         restaurantId: restaurant.id,
         date: selectedDate,
         time: selectedTime,
-        guests,
+        guests: selectedGuests,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim() || undefined,
         comment: comment.trim() || undefined,
       };
 
-      await onSubmit(booking);
-      handleClose();
-    } catch (error) {
+      await onSubmit(bookingRequest);
       Alert.alert(
-        "Ошибка бронирования",
-        "Что-то пошло не так. Попробуйте снова."
+        "Успешно!",
+        `Столик на ${selectedGuests} ${
+          selectedGuests === 1 ? "человека" : "человек"
+        } забронирован на ${selectedDate} в ${selectedTime}`,
+        [
+          {
+            text: "OK",
+            onPress: handleClose,
+          },
+        ]
       );
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось забронировать столик");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const renderDateTimeStep = () => (
-    <View className="flex-1 bg-background-primary">
+    <>
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-        <View className="pt-6 pb-4">
-          <Typography variant="h5" className="text-text-primary mb-6">
-            Бронирование столика
+        {/* Guest Selection */}
+        <View className="mb-8 mt-4">
+          <Typography
+            variant="h6"
+            className="mb-4 text-neutral-900 font-semibold"
+          >
+            Количество гостей
           </Typography>
-
-          <Card variant="elevated" padding="md" className="mb-4">
-            <SimpleGuestSelector
-              value={guests}
-              onChange={setGuests}
-              min={1}
-              max={10}
-              label="Количество гостей"
-            />
-          </Card>
-
-          <Card variant="elevated" padding="md" className="mb-4">
-            <DateSelector
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-            />
-          </Card>
-
-          <Card variant="elevated" padding="md" className="mb-6">
-            <TimeSlotSelector
-              timeSlots={timeSlots}
-              selectedTime={selectedTime}
-              onTimeSelect={setSelectedTime}
-            />
-          </Card>
+          <View className="flex-row flex-wrap gap-3 justify-center">
+            {GUEST_OPTIONS.map((guests) => (
+              <View key={guests} className="mb-2">
+                <Chip
+                  label={`${guests} ${
+                    guests === 1 ? "гость" : guests <= 4 ? "гостя" : "гостей"
+                  }`}
+                  isSelected={selectedGuests === guests}
+                  onPress={() => setSelectedGuests(guests)}
+                />
+              </View>
+            ))}
+          </View>
         </View>
+
+        {/* Date Selection */}
+        <View className="mb-8">
+          <Typography
+            variant="h6"
+            className="mb-4 text-neutral-900 font-semibold"
+          >
+            Дата
+          </Typography>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="flex-row"
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingRight: 32,
+              gap: 12,
+            }}
+          >
+            {DATE_OPTIONS.map((date) => (
+              <Chip
+                key={date.value}
+                label={date.label}
+                isSelected={selectedDate === date.value}
+                onPress={() => setSelectedDate(date.value)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Time Selection */}
+        <View className="mb-8">
+          <Typography
+            variant="h6"
+            className="mb-4 text-neutral-900 font-semibold"
+          >
+            Время
+          </Typography>
+          <View className="flex-row flex-wrap justify-center gap-3">
+            {TIME_SLOTS.map((time) => (
+              <View key={time} className="mb-2">
+                <Chip
+                  label={time}
+                  isSelected={selectedTime === time}
+                  onPress={() => setSelectedTime(time)}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Booking Summary */}
+        {isDateTimeValid && (
+          <BookingSummary
+            restaurant={restaurant}
+            selectedGuests={selectedGuests}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+          />
+        )}
       </ScrollView>
 
       <View className="px-4 pb-6 border-t border-border-light pt-4 bg-background-primary">
@@ -193,22 +301,18 @@ export function BookingModal({
           size="lg"
           fullWidth
           onPress={handleDateTimeNext}
-          disabled={!selectedTime}
+          disabled={!isDateTimeValid}
         >
           Продолжить
         </Button>
       </View>
-    </View>
+    </>
   );
 
   const renderDetailsStep = () => (
-    <View className="flex-1 bg-background-primary">
+    <>
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         <View className="pt-6 pb-4">
-          <Typography variant="h5" className="text-text-primary mb-6">
-            Ваши данные
-          </Typography>
-
           <View className="space-y-4">
             <Input
               label="Полное имя"
@@ -248,55 +352,12 @@ export function BookingModal({
               leftIcon="chatbubble-outline"
             />
           </View>
-
-          <Card variant="elevated" padding="md" className="mt-6">
-            <Typography variant="h6" className="text-text-primary mb-3">
-              Сводка бронирования
-            </Typography>
-            <View className="space-y-2">
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Ресторан:
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  {restaurant.name}
-                </Typography>
-              </View>
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Дата:
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  {new Date(selectedDate).toLocaleDateString("ru-RU", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </Typography>
-              </View>
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Время:
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  {selectedTime}
-                </Typography>
-              </View>
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Гости:
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  {guests}{" "}
-                  {guests === 1
-                    ? "человек"
-                    : guests < 5
-                    ? "человека"
-                    : "человек"}
-                </Typography>
-              </View>
-            </View>
-          </Card>
+          <BookingSummary
+            restaurant={restaurant}
+            selectedGuests={selectedGuests}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+          />
         </View>
       </ScrollView>
 
@@ -305,15 +366,14 @@ export function BookingModal({
           variant="primary"
           size="lg"
           fullWidth
+          loading={isSubmitting}
+          disabled={!isFormValid || isSubmitting}
           onPress={handleSubmit}
-          disabled={
-            isSubmitting || !customerName.trim() || !customerPhone.trim()
-          }
         >
-          {isSubmitting ? "Бронирование..." : "Подтвердить бронирование"}
+          {isSubmitting ? "Бронируем..." : "Забронировать столик"}
         </Button>
       </View>
-    </View>
+    </>
   );
 
   const getStepContent = () => {
