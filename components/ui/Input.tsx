@@ -1,65 +1,52 @@
 import { Ionicons } from "@expo/vector-icons";
 import { forwardRef } from "react";
-import { Text, TextInput, TextInputProps, View } from "react-native";
+import { Pressable, TextInput, TextInputProps, View } from "react-native";
 import { Colors } from "../tokens";
 
 export interface InputProps extends Omit<TextInputProps, "className"> {
-  label?: string;
-  error?: string;
-  hint?: string;
   leftIcon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
-  size?: "sm" | "md" | "lg";
-  variant?: "outline" | "filled";
-  className?: string;
+  variant?: "outline" | "filled" | "ghost";
   disabled?: boolean;
+  error?: boolean;
+  className?: string;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
   (
     {
-      label,
-      error,
-      hint,
       leftIcon,
       rightIcon,
       onRightIconPress,
-      size = "md",
       variant = "outline",
-      className = "",
       disabled = false,
+      error = false,
+      className = "",
       ...props
     },
     ref
   ) => {
-    const getSizeStyles = () => {
-      switch (size) {
-        case "sm":
-          return "px-3 py-2 text-sm";
-        case "lg":
-          return "px-4 py-4 text-lg";
-        default:
-          return "px-4 py-3 text-base";
-      }
-    };
-
-    const getVariantStyles = () => {
-      const baseStyles = "rounded-lg font-sf-pro";
+    const getStyles = () => {
+      const base = props.multiline
+        ? "min-h-[92px] px-3 rounded-xl"
+        : "h-[46px] px-3 rounded-xl";
 
       if (error) {
-        return `${baseStyles} border-2 border-error-main bg-white`;
+        return `${base} border-2 border-error-main bg-white`;
       }
 
       if (disabled) {
-        return `${baseStyles} border border-neutral-300 bg-neutral-100`;
+        return `${base} border border-neutral-300 bg-neutral-100`;
       }
 
       switch (variant) {
         case "filled":
-          return `${baseStyles} bg-neutral-100 border-0`;
+          return `${base} bg-neutral-100 border-0`;
+        case "ghost":
+          return `${base} bg-transparent border-0`;
         default:
-          return `${baseStyles} border border-neutral-300 bg-white`;
+          return `${base} border border-neutral-300 bg-white`;
       }
     };
 
@@ -70,50 +57,40 @@ export const Input = forwardRef<TextInput, InputProps>(
       : Colors.neutral[500];
 
     return (
-      <View className={className}>
-        {label && (
-          <Text className="text-sm font-sf-pro font-medium text-neutral-700 mb-2">
-            {label}
-          </Text>
+      <View
+        className={`flex-row ${
+          props.multiline ? "items-start" : "items-center"
+        } w-full ${getStyles()} ${className}`}
+      >
+        {leftIcon && (
+          <View className={`mr-3 ${props.multiline ? "pt-3" : ""}`}>
+            <Ionicons name={leftIcon} size={20} color={iconColor} />
+          </View>
         )}
 
-        <View className="relative">
-          <TextInput
-            ref={ref}
-            className={`${getVariantStyles()} ${getSizeStyles()} ${
-              leftIcon ? "pl-10" : ""
-            } ${rightIcon ? "pr-10" : ""}`}
-            placeholderTextColor={Colors.neutral[400]}
-            editable={!disabled}
-            {...props}
-          />
+        <TextInput
+          ref={ref}
+          className={`flex-1 text-base ${
+            props.multiline ? "py-3" : "h-full py-0 my-0"
+          }`}
+          style={{
+            fontFamily: "SF-Pro-Text",
+            color: disabled ? Colors.neutral[400] : Colors.text.primary,
+            textAlignVertical: props.multiline ? "top" : "center",
+          }}
+          placeholderTextColor={Colors.neutral[400]}
+          editable={!disabled}
+          {...props}
+        />
 
-          {leftIcon && (
-            <View className="absolute left-3 top-1/2 -translate-y-1/2">
-              <Ionicons name={leftIcon} size={20} color={iconColor} />
-            </View>
-          )}
-
-          {rightIcon && (
-            <View className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Ionicons
-                name={rightIcon}
-                size={20}
-                color={iconColor}
-                onPress={onRightIconPress}
-              />
-            </View>
-          )}
-        </View>
-
-        {(error || hint) && (
-          <Text
-            className={`text-xs font-sf-pro mt-1 ${
-              error ? "text-error-main" : "text-neutral-500"
-            }`}
+        {rightIcon && (
+          <Pressable
+            className={`ml-3 ${props.multiline ? "pt-3" : ""}`}
+            onPress={onRightIconPress}
+            disabled={!onRightIconPress}
           >
-            {error || hint}
-          </Text>
+            <Ionicons name={rightIcon} size={20} color={iconColor} />
+          </Pressable>
         )}
       </View>
     );

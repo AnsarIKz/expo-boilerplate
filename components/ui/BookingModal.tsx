@@ -313,9 +313,8 @@ export function BookingModal({
     <>
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         <View className="pt-6 pb-4">
-          <View className="space-y-4">
+          <View className="pb-4">
             <Input
-              label="Полное имя"
               value={customerName}
               onChangeText={setCustomerName}
               placeholder="Введите ваше полное имя"
@@ -323,8 +322,9 @@ export function BookingModal({
               leftIcon="person-outline"
             />
 
+            <View className="h-2 bg-black-500" />
+
             <Input
-              label="Номер телефона"
               value={customerPhone}
               onChangeText={setCustomerPhone}
               placeholder="+7 (___) ___-__-__"
@@ -332,8 +332,8 @@ export function BookingModal({
               leftIcon="call-outline"
             />
 
+            <View className="h-2 bg-black-500" />
             <Input
-              label="Email (необязательно)"
               value={customerEmail}
               onChangeText={setCustomerEmail}
               placeholder="your.email@example.com"
@@ -342,11 +342,11 @@ export function BookingModal({
               leftIcon="mail-outline"
             />
 
+            <View className="h-2 bg-black-500" />
             <Input
-              label="Особые пожелания (необязательно)"
               value={comment}
               onChangeText={setComment}
-              placeholder="Особые пожелания или аллергии..."
+              placeholder="Особые пожелания..."
               multiline
               numberOfLines={3}
               leftIcon="chatbubble-outline"
@@ -393,7 +393,7 @@ export function BookingModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="fullScreen"
+      presentationStyle="formSheet"
       onRequestClose={handleClose}
     >
       <SafeAreaView className="flex-1 bg-background-primary" edges={["top"]}>
