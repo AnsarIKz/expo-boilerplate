@@ -1,441 +1,485 @@
+import { Restaurant } from "@/entities/Restaurant";
+import { Booking } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Alert, Modal, ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Restaurant } from "../../entities/Restaurant";
-import { BookingRequest } from "../../types/booking";
 import { Colors } from "../tokens";
 import { Button } from "./Button";
-import { Chip } from "./Chip";
-import { Input } from "./Input";
+import { Toast } from "./Toast";
 import { Typography } from "./Typography";
 
-interface BookingModalProps {
+interface BookingDetailsModalProps {
   visible: boolean;
+  booking: Booking | null;
+  restaurant?: Restaurant;
   onClose: () => void;
-  restaurant: Restaurant;
-  onSubmit: (booking: BookingRequest) => void;
-  initialGuests?: number;
-  startStep?: "datetime" | "details";
+  onCancel?: (booking: Booking) => void;
+  onRate?: (booking: Booking, rating: number) => void;
 }
 
-const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
-
-const DATE_OPTIONS = [
-  { value: "2024-01-15", label: "Сегодня" },
-  { value: "2024-01-16", label: "Завтра" },
-  { value: "2024-01-17", label: "17 янв" },
-  { value: "2024-01-18", label: "18 янв" },
-  { value: "2024-01-19", label: "19 янв" },
-  { value: "2024-01-20", label: "20 янв" },
-  { value: "2024-01-21", label: "21 янв" },
-];
-
-const TIME_SLOTS = [
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
-  "21:30",
-  "22:00",
-  "22:30",
-];
-
-const BookingSummary = ({
-  restaurant,
-  selectedGuests,
-  selectedDate,
-  selectedTime,
-}: {
-  restaurant: Restaurant;
-  selectedGuests: number;
-  selectedDate: string;
-  selectedTime: string;
-}) => {
-  return (
-    <View className="bg-background-cream border border-primary-200 rounded-2xl p-6 mb-6 mx-2">
-      <Typography
-        variant="h6"
-        className="mb-4 text-primary-700 font-semibold text-center"
-      >
-        Детали бронирования
-      </Typography>
-      <View className="space-y-3">
-        <View className="flex-row justify-between items-center">
-          <Typography variant="body2" className="text-neutral-600 font-medium">
-            Ресторан:
-          </Typography>
-          <Typography
-            variant="body2"
-            className="text-neutral-900 font-semibold"
-          >
-            {restaurant.name}
-          </Typography>
-        </View>
-        <View className="flex-row justify-between items-center">
-          <Typography variant="body2" className="text-neutral-600 font-medium">
-            Гостей:
-          </Typography>
-          <Typography
-            variant="body2"
-            className="text-neutral-900 font-semibold"
-          >
-            {selectedGuests}
-          </Typography>
-        </View>
-        <View className="flex-row justify-between items-center">
-          <Typography variant="body2" className="text-neutral-600 font-medium">
-            Дата:
-          </Typography>
-          <Typography
-            variant="body2"
-            className="text-neutral-900 font-semibold"
-          >
-            {DATE_OPTIONS.find((d) => d.value === selectedDate)?.label}
-          </Typography>
-        </View>
-        <View className="flex-row justify-between items-center">
-          <Typography variant="body2" className="text-neutral-600 font-medium">
-            Время:
-          </Typography>
-          <Typography
-            variant="body2"
-            className="text-neutral-900 font-semibold"
-          >
-            {selectedTime}
-          </Typography>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-export function BookingModal({
+export function BookingDetailsModal({
   visible,
-  onClose,
+  booking,
   restaurant,
-  onSubmit,
-  initialGuests = 2,
-  startStep = "datetime",
-}: BookingModalProps) {
-  const [step, setStep] = useState<"datetime" | "details">(startStep);
-  const [selectedGuests, setSelectedGuests] = useState(initialGuests);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [comment, setComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  onClose,
+  onCancel,
+  onRate,
+}: BookingDetailsModalProps) {
+  const [rating, setRating] = useState(0);
+  const [showToast, setShowToast] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [editedPhone, setEditedPhone] = useState(booking?.customerPhone || "");
 
-  const isDateTimeValid = selectedDate && selectedTime && selectedGuests;
-  const isFormValid = customerName.trim() && customerPhone.trim();
+  if (!booking) return null;
+
+  // Форматирование полной даты
+  const formatFullDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  // Цвет и текст статуса
+  const getStatusInfo = (status: Booking["status"]) => {
+    switch (status) {
+      case "confirmed":
+        return { color: Colors.success.main, text: "Подтверждено" };
+      case "pending":
+        return { color: Colors.warning.main, text: "Ожидает подтверждения" };
+      case "cancelled":
+        return { color: Colors.neutral[400], text: "Отменено" };
+      default:
+        return { color: Colors.neutral[500], text: "Неизвестно" };
+    }
+  };
 
   const handleClose = () => {
-    setStep(startStep);
-    setSelectedGuests(initialGuests);
-    setSelectedDate("");
-    setSelectedTime("");
-    setCustomerName("");
-    setCustomerPhone("");
-    setCustomerEmail("");
-    setComment("");
-    onClose();
+    // Если была выставлена оценка, отправляем её и показываем тост
+    if (rating > 0 && booking.status === "confirmed") {
+      onRate?.(booking, rating);
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+        setRating(0);
+        onClose();
+      }, 2000);
+    } else {
+      setRating(0);
+      onClose();
+    }
   };
 
-  const handleDateTimeNext = () => {
-    if (!isDateTimeValid) {
-      Alert.alert("Ошибка", "Пожалуйста, выберите все параметры бронирования");
-      return;
-    }
-    setStep("details");
-  };
-
-  const handleSubmit = async () => {
-    if (!isFormValid) {
-      Alert.alert("Ошибка", "Пожалуйста, заполните все обязательные поля");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const bookingRequest: BookingRequest = {
-        restaurantId: restaurant.id,
-        date: selectedDate,
-        time: selectedTime,
-        guests: selectedGuests,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerEmail: customerEmail.trim() || undefined,
-        comment: comment.trim() || undefined,
-      };
-
-      await onSubmit(bookingRequest);
-      Alert.alert(
-        "Успешно!",
-        `Столик на ${selectedGuests} ${
-          selectedGuests === 1 ? "человека" : "человек"
-        } забронирован на ${selectedDate} в ${selectedTime}`,
-        [
-          {
-            text: "OK",
-            onPress: handleClose,
+  const handleCancelBooking = () => {
+    Alert.alert(
+      "Отменить бронирование",
+      "Вы уверены, что хотите отменить это бронирование?",
+      [
+        { text: "Нет", style: "cancel" },
+        {
+          text: "Да, отменить",
+          style: "destructive",
+          onPress: () => {
+            onCancel?.(booking);
+            onClose();
           },
-        ]
-      );
-    } catch (error) {
-      Alert.alert("Ошибка", "Не удалось забронировать столик");
-    } finally {
-      setIsSubmitting(false);
-    }
+        },
+      ]
+    );
   };
 
-  const renderDateTimeStep = () => (
-    <>
-      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-        {/* Guest Selection */}
-        <View className="mb-8 mt-4">
-          <Typography
-            variant="h6"
-            className="mb-4 text-neutral-900 font-semibold"
-          >
-            Количество гостей
-          </Typography>
-          <View className="flex-row flex-wrap gap-3 justify-center">
-            {GUEST_OPTIONS.map((guests) => (
-              <View key={guests} className="mb-2">
-                <Chip
-                  label={`${guests} ${
-                    guests === 1 ? "гость" : guests <= 4 ? "гостя" : "гостей"
-                  }`}
-                  isSelected={selectedGuests === guests}
-                  onPress={() => setSelectedGuests(guests)}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
+  const statusInfo = getStatusInfo(booking.status);
+  const restaurantImage =
+    restaurant?.image ||
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop";
 
-        {/* Date Selection */}
-        <View className="mb-8">
-          <Typography
-            variant="h6"
-            className="mb-4 text-neutral-900 font-semibold"
-          >
-            Дата
-          </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="flex-row"
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingRight: 32,
-              gap: 12,
-            }}
-          >
-            {DATE_OPTIONS.map((date) => (
-              <Chip
-                key={date.value}
-                label={date.label}
-                isSelected={selectedDate === date.value}
-                onPress={() => setSelectedDate(date.value)}
-              />
-            ))}
-          </ScrollView>
-        </View>
+  // Проверка статуса оплаты и времени
+  const isEventNow = () => {
+    if (!booking) return false;
+    const now = new Date();
+    const bookingDate = new Date(booking.date);
+    const [hours, minutes] = booking.time.split(":").map(Number);
+    bookingDate.setHours(hours, minutes);
 
-        {/* Time Selection */}
-        <View className="mb-8">
-          <Typography
-            variant="h6"
-            className="mb-4 text-neutral-900 font-semibold"
-          >
-            Время
-          </Typography>
-          <View className="flex-row flex-wrap justify-center gap-3">
-            {TIME_SLOTS.map((time) => (
-              <View key={time} className="mb-2">
-                <Chip
-                  label={time}
-                  isSelected={selectedTime === time}
-                  onPress={() => setSelectedTime(time)}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Booking Summary */}
-        {isDateTimeValid && (
-          <BookingSummary
-            restaurant={restaurant}
-            selectedGuests={selectedGuests}
-            selectedDate={selectedDate}
-            selectedTime={selectedTime}
-          />
-        )}
-      </ScrollView>
-
-      <View className="px-4 pb-6 border-t border-border-light pt-4 bg-background-primary">
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          onPress={handleDateTimeNext}
-          disabled={!isDateTimeValid}
-        >
-          Продолжить
-        </Button>
-      </View>
-    </>
-  );
-
-  const renderDetailsStep = () => (
-    <>
-      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-        <View className="pt-6 pb-4">
-          <View className="pb-4">
-            <Input
-              value={customerName}
-              onChangeText={setCustomerName}
-              placeholder="Введите ваше полное имя"
-              autoCapitalize="words"
-              leftIcon="person-outline"
-            />
-
-            <View className="h-2 bg-black-500" />
-
-            <Input
-              value={customerPhone}
-              onChangeText={setCustomerPhone}
-              placeholder="+7 (___) ___-__-__"
-              keyboardType="phone-pad"
-              leftIcon="call-outline"
-            />
-
-            <View className="h-2 bg-black-500" />
-            <Input
-              value={customerEmail}
-              onChangeText={setCustomerEmail}
-              placeholder="your.email@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon="mail-outline"
-            />
-
-            <View className="h-2 bg-black-500" />
-            <Input
-              value={comment}
-              onChangeText={setComment}
-              placeholder="Особые пожелания..."
-              multiline
-              numberOfLines={3}
-              leftIcon="chatbubble-outline"
-            />
-          </View>
-          <BookingSummary
-            restaurant={restaurant}
-            selectedGuests={selectedGuests}
-            selectedDate={selectedDate}
-            selectedTime={selectedTime}
-          />
-        </View>
-      </ScrollView>
-
-      <View className="px-4 pb-6 border-t border-border-light pt-4 bg-background-primary">
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={isSubmitting}
-          disabled={!isFormValid || isSubmitting}
-          onPress={handleSubmit}
-        >
-          {isSubmitting ? "Бронируем..." : "Забронировать столик"}
-        </Button>
-      </View>
-    </>
-  );
-
-  const getStepContent = () => {
-    switch (step) {
-      case "datetime":
-        return renderDateTimeStep();
-      case "details":
-        return renderDetailsStep();
-      default:
-        return renderDateTimeStep();
-    }
+    // Событие проходит в течение 2 часов после назначенного времени
+    const eventEnd = new Date(bookingDate.getTime() + 2 * 60 * 60 * 1000);
+    return now >= bookingDate && now <= eventEnd;
   };
 
-  const canGoBack = step === "details";
+  const shouldShowPayment = () => {
+    if (!booking || booking.status === "cancelled") return false;
+    // Показываем кнопку оплаты если не оплачено и событие еще не прошло
+    const now = new Date();
+    const bookingDate = new Date(booking.date);
+    const [hours, minutes] = booking.time.split(":").map(Number);
+    bookingDate.setHours(hours, minutes);
+
+    return !booking.isPaid && now < bookingDate;
+  };
+
+  const handleSavePhone = () => {
+    // Здесь можно добавить логику сохранения номера телефона
+    setIsEditingPhone(false);
+  };
+
+  const handlePayment = () => {
+    // Логика оплаты
+    Alert.alert("Оплата", "Переход к оплате...");
+  };
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="formSheet"
+      presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView className="flex-1 bg-background-primary" edges={["top"]}>
-        {/* Header */}
-        <View className="px-4 py-4 border-b border-border-light bg-background-primary">
-          <View className="flex-row items-center justify-between">
-            {canGoBack ? (
-              <TouchableOpacity
-                onPress={() => {
-                  if (step === "details") setStep("datetime");
-                }}
-                className="w-10 h-10 items-center justify-center"
-              >
-                <Ionicons
-                  name="arrow-back"
-                  size={24}
-                  color={Colors.neutral[600]}
-                />
-              </TouchableOpacity>
-            ) : (
-              <View className="w-10" />
-            )}
-
+      <View className="flex-1 bg-background-cream">
+        {/* Заголовок */}
+        <SafeAreaView>
+          <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
             <Typography
-              variant="subtitle1"
+              variant="body1"
               className="text-text-primary font-semibold"
             >
-              {step === "datetime" && "Выбор даты и времени"}
-              {step === "details" && "Ваши данные"}
+              Детали бронирования
             </Typography>
-
             <TouchableOpacity
               onPress={handleClose}
-              className="w-10 h-10 items-center justify-center"
+              className="w-8 h-8 items-center justify-center rounded-full bg-gray-100"
             >
-              <Ionicons name="close" size={24} color={Colors.neutral[600]} />
+              <Ionicons name="close" size={20} color={Colors.neutral[600]} />
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
 
-        {getStepContent()}
-      </SafeAreaView>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 24 }}
+        >
+          {/* Фото ресторана */}
+          <View className="mb-6">
+            <Image
+              source={{ uri: restaurantImage }}
+              className="w-full h-48 rounded-xl"
+              resizeMode="cover"
+            />
+          </View>
+
+          {/* Название ресторана и дата */}
+          <View className="mb-6">
+            <View className="flex-row justify-between items-start mb-2">
+              <Typography
+                variant="h4"
+                className="text-text-primary font-bold flex-1 mr-4"
+              >
+                {booking.restaurantName}
+              </Typography>
+              <View className="items-end">
+                <Typography
+                  variant="body2"
+                  color="secondary"
+                  className="text-xs"
+                >
+                  {formatFullDate(booking.date)}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  className="text-text-primary font-semibold"
+                >
+                  {booking.time}
+                </Typography>
+              </View>
+            </View>
+
+            {restaurant?.location?.address && (
+              <Typography variant="body1" color="secondary" className="mb-2">
+                {restaurant.location.address}
+              </Typography>
+            )}
+
+            {/* Статус с индикатором "сейчас проходит" */}
+            <View className="flex-row items-center">
+              {isEventNow() ? (
+                <View className="px-3 py-1 rounded-full bg-green-500 mr-2">
+                  <Typography
+                    variant="caption"
+                    className="text-white font-medium"
+                  >
+                    Сейчас проходит
+                  </Typography>
+                </View>
+              ) : (
+                <View
+                  className="px-3 py-1 rounded-full mr-2"
+                  style={{ backgroundColor: statusInfo.color }}
+                >
+                  <Typography
+                    variant="caption"
+                    className="text-white font-medium"
+                  >
+                    {statusInfo.text}
+                  </Typography>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Информация о бронировании - упрощенная */}
+
+          {/* Кто забронировал */}
+          <View className="mb-3">
+            <Typography variant="caption" color="secondary" className="mb-1">
+              Забронировал
+            </Typography>
+            <Typography
+              variant="body1"
+              className="text-text-primary font-medium"
+            >
+              {booking.customerName}
+            </Typography>
+          </View>
+
+          {/* Количество гостей */}
+          <View className="mb-3">
+            <Typography variant="caption" color="secondary" className="mb-1">
+              Количество гостей
+            </Typography>
+            <Typography
+              variant="body1"
+              className="text-text-primary font-medium"
+            >
+              {booking.guests} {booking.guests === 1 ? "гость" : "гостей"}
+            </Typography>
+
+            {/* Телефон с возможностью редактирования */}
+            <View className="mb-3">
+              <View className="flex-row justify-between items-center mb-1">
+                <Typography variant="caption" color="secondary">
+                  Номер телефона
+                </Typography>
+                <TouchableOpacity
+                  onPress={() => setIsEditingPhone(!isEditingPhone)}
+                  className="px-2 py-1"
+                >
+                  <Ionicons
+                    name={isEditingPhone ? "checkmark" : "pencil"}
+                    size={16}
+                    color={Colors.primary[500]}
+                  />
+                </TouchableOpacity>
+              </View>
+              {isEditingPhone ? (
+                <TextInput
+                  value={editedPhone}
+                  onChangeText={setEditedPhone}
+                  onBlur={handleSavePhone}
+                  keyboardType="phone-pad"
+                  className="bg-white px-3 py-2 rounded-lg border border-gray-200 text-text-primary"
+                  placeholder="Введите номер телефона"
+                />
+              ) : (
+                <Typography
+                  variant="body1"
+                  className="text-text-primary font-medium"
+                >
+                  {booking.customerPhone}
+                </Typography>
+              )}
+            </View>
+
+            {/* Email */}
+            {booking.customerEmail && (
+              <View className="mb-3">
+                <Typography
+                  variant="caption"
+                  color="secondary"
+                  className="mb-1"
+                >
+                  Email
+                </Typography>
+                <Typography
+                  variant="body1"
+                  className="text-text-primary font-medium"
+                >
+                  {booking.customerEmail}
+                </Typography>
+              </View>
+            )}
+
+            {/* Комментарий */}
+            {booking.comment && (
+              <View>
+                <Typography
+                  variant="caption"
+                  color="secondary"
+                  className="mb-1"
+                >
+                  Комментарий
+                </Typography>
+                <Typography variant="body1" className="text-text-primary">
+                  {booking.comment}
+                </Typography>
+              </View>
+            )}
+          </View>
+
+          {/* Фискальный чек - стиль чека */}
+          <View className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4 mb-6">
+            <View className="border-b border-gray-200 pb-3 mb-3">
+              <Typography
+                variant="h6"
+                className="text-center text-text-primary font-bold"
+              >
+                ФИСКАЛЬНЫЙ ЧЕК
+              </Typography>
+              <Typography
+                variant="caption"
+                className="text-center text-gray-500"
+              >
+                {booking.restaurantName}
+              </Typography>
+            </View>
+
+            <View className="space-y-2 mb-4">
+              <View className="flex-row justify-between">
+                <Typography variant="body2" color="secondary">
+                  Бронирование стола
+                </Typography>
+                <Typography variant="body2" className="text-text-primary">
+                  1 × 500₽
+                </Typography>
+              </View>
+              <View className="flex-row justify-between">
+                <Typography variant="body2" color="secondary">
+                  Гости: {booking.guests}
+                </Typography>
+                <Typography variant="body2" className="text-text-primary">
+                  {booking.guests} × 200₽
+                </Typography>
+              </View>
+              <View className="border-t border-gray-200 pt-2 flex-row justify-between">
+                <Typography
+                  variant="body1"
+                  className="text-text-primary font-semibold"
+                >
+                  Итого:
+                </Typography>
+                <Typography
+                  variant="body1"
+                  className="text-text-primary font-bold"
+                >
+                  {500 + booking.guests * 200}₽
+                </Typography>
+              </View>
+            </View>
+
+            {/* Статус оплаты */}
+            <View className="flex-row items-center justify-center mb-3">
+              {booking.isPaid ? (
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={Colors.success.main}
+                  />
+                  <Typography
+                    variant="body2"
+                    className="ml-2 text-success-main font-medium"
+                  >
+                    Оплачено
+                  </Typography>
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Ionicons name="time" size={20} color={Colors.warning.main} />
+                  <Typography
+                    variant="body2"
+                    className="ml-2 text-warning-main font-medium"
+                  >
+                    Ожидает оплаты
+                  </Typography>
+                </View>
+              )}
+            </View>
+
+            {/* Кнопка оплаты */}
+            {shouldShowPayment() && (
+              <Button
+                variant="primary"
+                size="lg"
+                onPress={handlePayment}
+                className="bg-success-main"
+              >
+                <Typography
+                  variant="subtitle1"
+                  className="text-white font-semibold"
+                >
+                  Оплатить {500 + booking.guests * 200}₽
+                </Typography>
+              </Button>
+            )}
+          </View>
+
+          {/* Оценка заведения */}
+          {booking.status === "confirmed" && (
+            <View className="mb-6">
+              {/* Звезды */}
+              <View className="flex-row items-center justify-center py-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setRating(star)}
+                    className="mx-2"
+                  >
+                    <Ionicons
+                      name={star <= rating ? "star" : "star-outline"}
+                      size={36}
+                      color={star <= rating ? Colors.star : Colors.neutral[300]}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Кнопка отмены */}
+          {booking.status === "confirmed" && onCancel && (
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={handleCancelBooking}
+              className="border-error-main mb-4"
+            >
+              <Typography variant="subtitle1" className="text-error-main">
+                Отменить бронирование
+              </Typography>
+            </Button>
+          )}
+        </ScrollView>
+      </View>
+      {showToast && (
+        <Toast
+          type="success"
+          title="Спасибо за оценку!"
+          message="Ваша оценка успешно отправлена"
+          visible={showToast}
+          onDismiss={() => setShowToast(false)}
+        />
+      )}
     </Modal>
   );
 }

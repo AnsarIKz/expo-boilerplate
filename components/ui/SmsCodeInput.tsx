@@ -1,7 +1,10 @@
+import { useSendVerification } from "@/hooks/api/useAuth";
+import { useToast } from "@/providers/ToastProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { RegistrationForm } from "./RegistrationForm";
 import { Typography } from "./Typography";
 
 interface SmsCodeInputProps {
@@ -20,7 +23,11 @@ export function SmsCodeInput({
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [resendTimer, setResendTimer] = useState(29);
   const [keepSignedIn, setKeepSignedIn] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+
+  const sendVerificationMutation = useSendVerification();
+  const { showSuccess, showWarning } = useToast();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -44,8 +51,22 @@ export function SmsCodeInput({
 
     // Auto verify when all fields are filled
     if (newCode.every((digit) => digit !== "")) {
-      onVerify(newCode.join(""));
+      const fullCode = newCode.join("");
+      console.log("✅ SmsCodeInput: Code complete, showing registration:", {
+        code: fullCode,
+        phoneNumber,
+        timestamp: new Date().toISOString(),
+      });
+      // Instead of calling onVerify directly, show registration form
+      setShowRegistration(true);
     }
+
+    console.log("📱 SmsCodeInput: Code changed:", {
+      length: newCode.join("").length,
+      currentDigit: value,
+      index,
+      timestamp: new Date().toISOString(),
+    });
   };
 
   const handleKeyPress = (key: string, index: number) => {
@@ -54,12 +75,50 @@ export function SmsCodeInput({
     }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
+    console.log("🔄 SmsCodeInput: Resend code requested:", {
+      phoneNumber,
+      resendTimer,
+      canResend: resendTimer === 0,
+      timestamp: new Date().toISOString(),
+    });
+
     if (resendTimer === 0) {
-      setResendTimer(29);
-      console.log("Resend code");
+      try {
+        console.log("📤 SmsCodeInput: Sending resend request");
+        await sendVerificationMutation.mutateAsync({
+          phoneNumber,
+        });
+
+        // Success notification is handled in the hook
+        setResendTimer(29);
+      } catch (error: any) {
+        console.error("❌ SmsCodeInput: Resend verification error:", {
+          error,
+          phoneNumber,
+          timestamp: new Date().toISOString(),
+        });
+        // Error notifications are now handled in the hook
+      }
+    } else {
+      console.warn("⏱️ SmsCodeInput: Resend blocked - timer not expired:", {
+        timeLeft: resendTimer,
+        canResend: resendTimer === 0,
+        timestamp: new Date().toISOString(),
+      });
     }
   };
+
+  const handleRegistrationBack = () => {
+    setShowRegistration(false);
+  };
+
+  const handleRegistrationSuccess = () => {
+    onClose();
+  };
+
+  const currentCode = code.join("");
+  const isResending = sendVerificationMutation.isPending;
 
   return (
     <View className="flex-1 bg-background-primary">
@@ -78,7 +137,7 @@ export function SmsCodeInput({
           {/* Title */}
           <View className="flex-1">
             <Typography className="text-black text-lg font-medium">
-              Enter Your Code
+              Введите код
             </Typography>
           </View>
 
@@ -97,15 +156,15 @@ export function SmsCodeInput({
           {/* Description */}
           <View className="mb-8">
             <Typography className="text-neutral-600 text-base leading-relaxed">
-              We've sent a 6-digit code to your {phoneNumber}.{"\n"}
-              Enter it below to verify your identity
+              Мы отправили 6-значный код на номер {phoneNumber}.{"\n"}
+              Введите его ниже для подтверждения
             </Typography>
           </View>
 
           {/* Code Input Section */}
           <View className="mb-6">
             <Typography className="text-black text-sm font-medium mb-3">
-              6-digit code
+              6-значный код
             </Typography>
 
             {/* Code Input Fields */}
@@ -148,7 +207,7 @@ export function SmsCodeInput({
                 )}
               </View>
               <Typography className="text-black text-sm">
-                Keep me signed in
+                Запомнить меня
               </Typography>
             </TouchableOpacity>
           </View>
@@ -157,17 +216,21 @@ export function SmsCodeInput({
           <View className="items-center mb-8">
             <TouchableOpacity
               onPress={handleResendCode}
-              disabled={resendTimer > 0}
+              disabled={resendTimer > 0 || isResending}
               activeOpacity={0.7}
             >
               <Typography
                 className={`text-sm ${
-                  resendTimer > 0 ? "text-neutral-400" : "text-primary-500"
+                  resendTimer > 0 || isResending
+                    ? "text-neutral-400"
+                    : "text-primary-500"
                 }`}
               >
-                {resendTimer > 0
-                  ? `Resend code in ${resendTimer} sec`
-                  : "Resend code"}
+                {isResending
+                  ? "Отправка..."
+                  : resendTimer > 0
+                  ? `Отправить код повторно через ${resendTimer} сек`
+                  : "Отправить код повторно"}
               </Typography>
             </TouchableOpacity>
           </View>
@@ -175,18 +238,34 @@ export function SmsCodeInput({
           {/* Terms */}
           <View className="items-center px-4 mb-8">
             <Typography className="text-neutral-500 text-xs text-center leading-relaxed">
-              By continuing, you agree to our{" "}
+              Продолжая, вы соглашаетесь с{" "}
               <Typography className="text-primary-500 text-xs underline">
-                Terms of Service
+                Условиями использования
               </Typography>{" "}
-              &{" "}
+              и{" "}
               <Typography className="text-primary-500 text-xs underline">
-                Privacy Policy
+                Политикой конфиденциальности
               </Typography>
             </Typography>
           </View>
         </View>
       </SafeAreaView>
+
+      {/* Registration Form Modal */}
+      <Modal
+        visible={showRegistration}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleRegistrationBack}
+      >
+        <RegistrationForm
+          phoneNumber={phoneNumber}
+          code={currentCode}
+          onBack={handleRegistrationBack}
+          onClose={onClose}
+          onSuccess={handleRegistrationSuccess}
+        />
+      </Modal>
     </View>
   );
 }

@@ -10,6 +10,7 @@ export interface Booking {
   customerPhone: string;
   customerEmail?: string;
   comment?: string;
+  isPaid?: boolean; // Payment status
   createdAt: string;
   updatedAt: string;
 }

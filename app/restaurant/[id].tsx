@@ -1,5 +1,5 @@
 import { Colors } from "@/components/tokens";
-import { BookingModal } from "@/components/ui/BookingModal";
+import { BookingCreateModal } from "@/components/ui/BookingCreateModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ParallaxImageCarousel } from "@/components/ui/ParallaxImageCarousel";
@@ -418,7 +418,7 @@ export default function RestaurantDetailScreen() {
             </View>
           </Button>
           {restaurant && (
-            <BookingModal
+            <BookingCreateModal
               visible={showBookingModal}
               onClose={() => setShowBookingModal(false)}
               restaurant={restaurant}

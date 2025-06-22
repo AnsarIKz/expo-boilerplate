@@ -17,6 +17,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { CityProvider } from "@/providers/CityProvider";
 import { FiltersProvider } from "@/providers/FiltersProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { ToastProvider } from "@/providers/ToastProvider";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync();
@@ -52,57 +53,52 @@ export default function RootLayout() {
       <QueryProvider>
         <CityProvider>
           <FiltersProvider>
-            <ThemeProvider
-              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-            >
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  animation: "slide_from_right",
-                }}
+            <ToastProvider>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
               >
-                <Stack.Screen
-                  name="auth"
-                  options={{
+                <Stack
+                  screenOptions={{
                     headerShown: false,
-                    gestureEnabled: false,
+                    animation: "slide_from_right",
                   }}
-                />
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
-                    headerShown: false,
-                    gestureEnabled: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="+not-found"
-                  options={{
-                    title: "Страница не найдена",
-                    presentation: "modal",
-                  }}
-                />
-                <Stack.Screen
-                  name="city-selector"
-                  options={{
-                    presentation: "modal",
-                    headerShown: false,
-                    gestureEnabled: true,
-                    animation: "slide_from_bottom",
-                  }}
-                />
-                <Stack.Screen
-                  name="filters"
-                  options={{
-                    presentation: "modal",
-                    headerShown: false,
-                    gestureEnabled: true,
-                    animation: "slide_from_bottom",
-                  }}
-                />
-              </Stack>
-              <StatusBar style="dark" />
-            </ThemeProvider>
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{
+                      headerShown: false,
+                      gestureEnabled: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="+not-found"
+                    options={{
+                      title: "Страница не найдена",
+                      presentation: "modal",
+                    }}
+                  />
+                  <Stack.Screen
+                    name="city-selector"
+                    options={{
+                      presentation: "modal",
+                      headerShown: false,
+                      gestureEnabled: true,
+                      animation: "slide_from_bottom",
+                    }}
+                  />
+                  <Stack.Screen
+                    name="filters"
+                    options={{
+                      presentation: "modal",
+                      headerShown: false,
+                      gestureEnabled: true,
+                      animation: "slide_from_bottom",
+                    }}
+                  />
+                </Stack>
+                <StatusBar style="dark" />
+              </ThemeProvider>
+            </ToastProvider>
           </FiltersProvider>
         </CityProvider>
       </QueryProvider>

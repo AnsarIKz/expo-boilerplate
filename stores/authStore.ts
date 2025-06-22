@@ -1,46 +1,54 @@
+import { User } from "@/lib/api/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-export interface User {
-  id: string;
-  phoneNumber: string;
-  name?: string;
-  email?: string;
-  avatar?: string;
-}
-
 interface AuthState {
   isAuthenticated: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
   user: User | null;
-  token: string | null;
+  anonymousUserId: string;
   isLoading: boolean;
-}
 
-interface AuthActions {
-  login: (user: User, token: string) => void;
+  generateAnonymousUserId: () => string;
+  login: (tokens: {
+    accessToken: string;
+    refreshToken: string;
+    user: User;
+  }) => void;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  updateTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
+  updateUserProfile: (user: User) => void;
   setLoading: (loading: boolean) => void;
 }
 
-type AuthStore = AuthState & AuthActions;
+const generateUserId = (): string => {
+  return `anonymous_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
+};
 
-export const useAuthStore = create<AuthStore>()(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // State
       isAuthenticated: false,
+      accessToken: null,
+      refreshToken: null,
       user: null,
-      token: null,
+      anonymousUserId: generateUserId(),
       isLoading: false,
 
-      // Actions
-      login: (user: User, token: string) => {
+      generateAnonymousUserId: () => {
+        const newId = generateUserId();
+        set({ anonymousUserId: newId });
+        return newId;
+      },
+
+      login: ({ accessToken, refreshToken, user }) => {
         set({
           isAuthenticated: true,
+          accessToken,
+          refreshToken,
           user,
-          token,
           isLoading: false,
         });
       },
@@ -48,33 +56,28 @@ export const useAuthStore = create<AuthStore>()(
       logout: () => {
         set({
           isAuthenticated: false,
+          accessToken: null,
+          refreshToken: null,
           user: null,
-          token: null,
           isLoading: false,
         });
       },
 
-      updateUser: (userData: Partial<User>) => {
-        const currentUser = get().user;
-        if (currentUser) {
-          set({
-            user: { ...currentUser, ...userData },
-          });
-        }
+      updateTokens: ({ accessToken, refreshToken }) => {
+        set({ accessToken, refreshToken });
       },
 
-      setLoading: (loading: boolean) => {
-        set({ isLoading: loading });
+      updateUserProfile: (user) => {
+        set({ user });
+      },
+
+      setLoading: (isLoading) => {
+        set({ isLoading });
       },
     }),
     {
       name: "auth-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
-        token: state.token,
-      }),
     }
   )
 );

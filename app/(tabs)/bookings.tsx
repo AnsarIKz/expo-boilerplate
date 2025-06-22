@@ -4,6 +4,7 @@ import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BookingCard } from "@/components/ui/BookingCard";
+import { BookingDetailsModal } from "@/components/ui/BookingModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
@@ -15,6 +16,8 @@ export default function BookingsScreen() {
   const { bookings, cancelBooking } = useBookingStore();
   const { data: restaurants = [] } = useRestaurants();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Сортировка бронирований по дате
   const sortedBookings = useMemo(() => {
@@ -48,32 +51,33 @@ export default function BookingsScreen() {
   }, []);
 
   const handleBookingPress = useCallback((booking: Booking) => {
-    // Здесь можно открыть детали бронирования
-    console.log("Booking pressed:", booking);
+    setSelectedBooking(booking);
+    setModalVisible(true);
   }, []);
 
   const handleCancelBooking = useCallback(
     (booking: Booking) => {
+      cancelBooking(booking.id);
       Alert.alert(
-        "Отменить бронирование",
-        `Вы уверены, что хотите отменить бронирование в ${booking.restaurantName}?`,
-        [
-          { text: "Назад", style: "cancel" },
-          {
-            text: "Отменить",
-            style: "destructive",
-            onPress: () => {
-              cancelBooking(booking.id);
-              Alert.alert(
-                "Бронирование отменено",
-                "Ваше бронирование было успешно отменено."
-              );
-            },
-          },
-        ]
+        "Бронирование отменено",
+        "Ваше бронирование было успешно отменено."
       );
     },
     [cancelBooking]
+  );
+
+  const handleRateRestaurant = useCallback(
+    (booking: Booking, rating: number) => {
+      // Здесь можно добавить логику отправки оценки на сервер
+      console.log(`Rating ${rating} for restaurant ${booking.restaurantName}`);
+      Alert.alert(
+        "Спасибо за оценку!",
+        `Вы поставили ${rating} звезд${
+          rating === 1 ? "у" : rating <= 4 ? "ы" : ""
+        } ресторану ${booking.restaurantName}`
+      );
+    },
+    []
   );
 
   const getRestaurantById = useCallback(
@@ -82,6 +86,11 @@ export default function BookingsScreen() {
     },
     [restaurants]
   );
+
+  const closeModal = useCallback(() => {
+    setModalVisible(false);
+    setSelectedBooking(null);
+  }, []);
 
   if (bookings.length === 0) {
     return (
@@ -103,7 +112,7 @@ export default function BookingsScreen() {
       <TitleHeader title="Бронирования" />
 
       <ScrollView
-        className="flex-1"
+        className="flex-1 px-4"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -115,11 +124,12 @@ export default function BookingsScreen() {
         }
         contentContainerStyle={{
           paddingBottom: 20,
+          paddingTop: 16,
         }}
       >
         {/* Предстоящие бронирования */}
         {groupedBookings.upcoming.length > 0 && (
-          <View className="px-4 py-4">
+          <View className="mb-6">
             <View className="flex-row items-center mb-4">
               <Ionicons name="time-outline" size={20} color="#bd561c" />
               <Typography
@@ -130,24 +140,20 @@ export default function BookingsScreen() {
               </Typography>
             </View>
 
-            <View className="space-y-3">
-              {groupedBookings.upcoming.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  restaurant={getRestaurantById(booking.restaurantId)}
-                  onPress={handleBookingPress}
-                  onCancel={handleCancelBooking}
-                  showActions={true}
-                />
-              ))}
-            </View>
+            {groupedBookings.upcoming.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                restaurant={getRestaurantById(booking.restaurantId)}
+                onPress={handleBookingPress}
+              />
+            ))}
           </View>
         )}
 
         {/* Прошедшие/отмененные бронирования */}
         {groupedBookings.past.length > 0 && (
-          <View className="px-4 py-4">
+          <View className="mb-6">
             <View className="flex-row items-center mb-4">
               <Ionicons
                 name="checkmark-circle-outline"
@@ -162,20 +168,31 @@ export default function BookingsScreen() {
               </Typography>
             </View>
 
-            <View className="space-y-3">
-              {groupedBookings.past.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  restaurant={getRestaurantById(booking.restaurantId)}
-                  onPress={handleBookingPress}
-                  showActions={false}
-                />
-              ))}
-            </View>
+            {groupedBookings.past.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                restaurant={getRestaurantById(booking.restaurantId)}
+                onPress={handleBookingPress}
+              />
+            ))}
           </View>
         )}
       </ScrollView>
+
+      {/* Modal для деталей бронирования */}
+      <BookingDetailsModal
+        visible={modalVisible}
+        booking={selectedBooking}
+        restaurant={
+          selectedBooking
+            ? getRestaurantById(selectedBooking.restaurantId)
+            : undefined
+        }
+        onClose={closeModal}
+        onCancel={handleCancelBooking}
+        onRate={handleRateRestaurant}
+      />
     </SafeAreaView>
   );
 }
