@@ -191,10 +191,28 @@ export const authApi = {
     }
   },
 
-  async deleteAccount(): Promise<DeleteAccountResponse> {
-    const response = await apiClient.delete<DeleteAccountResponse>(
-      "/auth/account"
-    );
-    return response.data;
+  // Delete account
+  deleteAccount: async (): Promise<ApiResponse<DeleteAccountResponse>> => {
+    console.log("🗑️ Starting deleteAccount API call:", {
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const response = await apiClient.delete("/api/v1/auth/delete-account");
+
+      console.log("🗑️ deleteAccount SUCCESS:", {
+        status: response.status,
+        message: response.data.data?.message || response.data.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("🗑️ deleteAccount FAILED:", {
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
   },
 };

@@ -1,6 +1,7 @@
 import { authApi } from "@/lib/api/auth";
 import {
   ApiError,
+  ApiResponse,
   DeleteAccountResponse,
   LoginRequest,
   SendVerificationRequest,
@@ -23,6 +24,7 @@ export function useSendVerification() {
       });
       return authApi.sendVerification(data);
     },
+    retry: false, // Disable automatic retries
     onSuccess: (data, variables) => {
       console.log("✅ useSendVerification SUCCESS:", {
         phoneNumber: variables.phoneNumber,
@@ -32,7 +34,7 @@ export function useSendVerification() {
 
       showSuccess(
         "Код отправлен",
-        data.data.message || "SMS код успешно отправлен"
+        data.data?.message || data.message || "SMS код успешно отправлен"
       );
     },
     onError: (error: any, variables) => {
@@ -84,6 +86,7 @@ export function useLogin() {
       });
       return authApi.login(data);
     },
+    retry: false, // Disable automatic retries
     onSuccess: (data, variables) => {
       const responseData = data.data;
 
@@ -162,6 +165,7 @@ export function useVerifyAndRegister() {
       });
       return authApi.verifyAndRegister(data);
     },
+    retry: false, // Disable automatic retries
     onSuccess: (data, variables) => {
       const responseData = data.data;
 
@@ -387,15 +391,28 @@ export function useRefreshSession() {
 export const useDeleteAccount = () => {
   const queryClient = useQueryClient();
   const { logout } = useAuthStore();
+  const { showSuccess, showError } = useToast();
 
-  return useMutation<DeleteAccountResponse, ApiError>({
+  return useMutation<ApiResponse<DeleteAccountResponse>, ApiError>({
     mutationFn: authApi.deleteAccount,
-    onSuccess: () => {
+    retry: false, // Disable automatic retries
+    onSuccess: (data) => {
+      console.log("✅ useDeleteAccount SUCCESS:", {
+        message: data.data?.message || data.message,
+        timestamp: new Date().toISOString(),
+      });
+
       logout();
       queryClient.clear();
+      showSuccess("Аккаунт удален", "Ваш аккаунт был успешно удален");
     },
     onError: (error) => {
-      console.error("Delete account error:", error);
+      console.error("❌ useDeleteAccount ERROR:", {
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      showError("Ошибка", "Не удалось удалить аккаунт");
     },
   });
 };

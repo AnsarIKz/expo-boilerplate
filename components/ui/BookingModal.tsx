@@ -7,7 +7,6 @@ import {
   Image,
   Modal,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -210,32 +209,6 @@ export function BookingDetailsModal({
                 {restaurant.location.address}
               </Typography>
             )}
-
-            {/* Статус с индикатором "сейчас проходит" */}
-            <View className="flex-row items-center">
-              {isEventNow() ? (
-                <View className="px-3 py-1 rounded-full bg-green-500 mr-2">
-                  <Typography
-                    variant="caption"
-                    className="text-white font-medium"
-                  >
-                    Сейчас проходит
-                  </Typography>
-                </View>
-              ) : (
-                <View
-                  className="px-3 py-1 rounded-full mr-2"
-                  style={{ backgroundColor: statusInfo.color }}
-                >
-                  <Typography
-                    variant="caption"
-                    className="text-white font-medium"
-                  >
-                    {statusInfo.text}
-                  </Typography>
-                </View>
-              )}
-            </View>
           </View>
 
           {/* Информация о бронировании - упрощенная */}
@@ -271,34 +244,14 @@ export function BookingDetailsModal({
                 <Typography variant="caption" color="secondary">
                   Номер телефона
                 </Typography>
-                <TouchableOpacity
-                  onPress={() => setIsEditingPhone(!isEditingPhone)}
-                  className="px-2 py-1"
-                >
-                  <Ionicons
-                    name={isEditingPhone ? "checkmark" : "pencil"}
-                    size={16}
-                    color={Colors.primary[500]}
-                  />
-                </TouchableOpacity>
               </View>
-              {isEditingPhone ? (
-                <TextInput
-                  value={editedPhone}
-                  onChangeText={setEditedPhone}
-                  onBlur={handleSavePhone}
-                  keyboardType="phone-pad"
-                  className="bg-white px-3 py-2 rounded-lg border border-gray-200 text-text-primary"
-                  placeholder="Введите номер телефона"
-                />
-              ) : (
-                <Typography
-                  variant="body1"
-                  className="text-text-primary font-medium"
-                >
-                  {booking.customerPhone}
-                </Typography>
-              )}
+
+              <Typography
+                variant="body1"
+                className="text-text-primary font-medium"
+              >
+                {booking.customerPhone}
+              </Typography>
             </View>
 
             {/* Email */}

@@ -291,14 +291,7 @@ export default function ProfileScreen() {
           text: "Удалить",
           style: "destructive",
           onPress: () => {
-            deleteAccountMutation.mutate(undefined, {
-              onSuccess: () => {
-                showSuccess("Аккаунт удален", "Ваш аккаунт был успешно удален");
-              },
-              onError: (error) => {
-                showError("Ошибка", "Не удалось удалить аккаунт");
-              },
-            });
+            deleteAccountMutation.mutate();
           },
         },
       ]

@@ -1,4 +1,8 @@
-import { useLogin, useSendVerification } from "@/hooks/api/useAuth";
+import {
+  useLogin,
+  useSendVerification,
+  useVerifyAndRegister,
+} from "@/hooks/api/useAuth";
 import { useToast } from "@/providers/ToastProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
@@ -57,6 +61,7 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
 
   const sendVerificationMutation = useSendVerification();
   const loginMutation = useLogin();
+  const verifyAndRegisterMutation = useVerifyAndRegister();
   const { showSuccess, showWarning } = useToast();
 
   // Toast animation effect
@@ -246,8 +251,53 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
       code,
       timestamp: new Date().toISOString(),
     });
-    // Здесь будет логика верификации
-    setIsSmsCodeVisible(false);
+
+    const fullPhoneNumber = `${selectedCountry.dialCode}${phoneNumber.replace(
+      /\s/g,
+      ""
+    )}`;
+
+    // Call verify and register API
+    verifyAndRegisterMutation.mutate(
+      {
+        phoneNumber: fullPhoneNumber,
+        code: code.trim(),
+        firstName: "User", // Default values for now
+        lastName: "Name",
+        password: "defaultPassword123", // Default password
+      },
+      {
+        onSuccess: () => {
+          console.log("✅ AuthRequired: Registration successful");
+          setIsSmsCodeVisible(false);
+          onClose?.();
+        },
+        onError: (error: any) => {
+          console.error("❌ AuthRequired: Registration error:", {
+            error,
+            timestamp: new Date().toISOString(),
+          });
+
+          // Check if user already exists (409 status)
+          if (error.response?.status === 409) {
+            console.log(
+              "👤 AuthRequired: User exists, switching to login mode"
+            );
+            setIsLoginMode(true);
+            setIsSmsCodeVisible(false);
+            showLocalToast(
+              "warning",
+              "Пользователь уже существует",
+              "Введите пароль для входа"
+            );
+          } else {
+            const errorMessage =
+              error.response?.data?.message || "Ошибка регистрации";
+            showLocalToast("error", "Ошибка", errorMessage);
+          }
+        },
+      }
+    );
   };
 
   const handleSmsBack = () => {
@@ -270,7 +320,9 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
     ""
   )}`;
   const isLoading =
-    sendVerificationMutation.isPending || loginMutation.isPending;
+    sendVerificationMutation.isPending ||
+    loginMutation.isPending ||
+    verifyAndRegisterMutation.isPending;
 
   console.log("🔄 AuthRequired: Component state:", {
     phoneNumber,
