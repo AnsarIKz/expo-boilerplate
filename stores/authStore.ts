@@ -10,6 +10,7 @@ interface AuthState {
   user: User | null;
   anonymousUserId: string;
   isLoading: boolean;
+  isOffline: boolean;
 
   generateAnonymousUserId: () => string;
   login: (tokens: {
@@ -21,6 +22,7 @@ interface AuthState {
   updateTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
   updateUserProfile: (user: User) => void;
   setLoading: (loading: boolean) => void;
+  setOffline: (offline: boolean) => void;
 }
 
 const generateUserId = (): string => {
@@ -36,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       anonymousUserId: generateUserId(),
       isLoading: false,
+      isOffline: false,
 
       generateAnonymousUserId: () => {
         const newId = generateUserId();
@@ -73,6 +76,10 @@ export const useAuthStore = create<AuthState>()(
 
       setLoading: (isLoading) => {
         set({ isLoading });
+      },
+
+      setOffline: (isOffline) => {
+        set({ isOffline });
       },
     }),
     {

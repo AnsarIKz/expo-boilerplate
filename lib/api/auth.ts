@@ -130,11 +130,27 @@ export const authApi = {
       });
 
       return response.data;
-    } catch (error) {
-      console.error("👤 getSession FAILED:", {
-        error: error,
-        timestamp: new Date().toISOString(),
-      });
+    } catch (error: any) {
+      // Check if it's a network error
+      const isNetworkError =
+        error?.code === "ECONNABORTED" ||
+        error?.code === "ERR_NETWORK" ||
+        error?.message === "Network Error" ||
+        error?.message?.includes("timeout");
+
+      if (isNetworkError) {
+        // Log network errors silently
+        console.log("👤 getSession NETWORK ERROR (silent):", {
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Log non-network errors normally
+        console.error("👤 getSession FAILED:", {
+          error: error,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       throw error;
     }
   },

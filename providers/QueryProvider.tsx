@@ -1,6 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 
+// Helper function to check if error is a network error
+const isNetworkError = (error: any): boolean => {
+  return (
+    error?.code === "ECONNABORTED" ||
+    error?.code === "ERR_NETWORK" ||
+    error?.message === "Network Error" ||
+    error?.message?.includes("timeout")
+  );
+};
+
 // Создаем QueryClient с настройками по умолчанию
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -10,7 +20,11 @@ const queryClient = new QueryClient({
       // Время хранения неактивных данных (10 минут)
       gcTime: 10 * 60 * 1000,
       // Повторные запросы при ошибках
-      retry: 3,
+      retry: (failureCount, error) => {
+        // Don't retry network errors
+        if (isNetworkError(error)) return false;
+        return failureCount < 3;
+      },
       // Интервал между повторными запросами
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Автоматическое обновление при фокусе окна
@@ -20,7 +34,11 @@ const queryClient = new QueryClient({
     },
     mutations: {
       // Повторные запросы для мутаций
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Don't retry network errors for mutations
+        if (isNetworkError(error)) return false;
+        return failureCount < 1;
+      },
     },
   },
 });

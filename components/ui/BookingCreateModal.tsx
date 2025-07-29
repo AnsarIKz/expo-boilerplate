@@ -106,7 +106,8 @@ const BookingSummary = ({
           </Typography>
           <Typography
             variant="body2"
-            className="text-neutral-900 font-semibold"
+            className="text-neutral-900 font-semibold flex-1 text-right"
+            numberOfLines={1}
           >
             {restaurant.name}
           </Typography>

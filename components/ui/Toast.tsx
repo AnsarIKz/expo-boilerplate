@@ -1,3 +1,5 @@
+import { checkApiHealth } from "@/lib/api/config";
+import { useAuthStore } from "@/stores/authStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect } from "react";
@@ -180,6 +182,37 @@ export function Toast({
           </Pressable>
         </View>
       </Animated.View>
+    </View>
+  );
+}
+
+export function OfflineIndicator() {
+  const { isOffline, setOffline } = useAuthStore();
+
+  // Check network connectivity periodically when offline
+  React.useEffect(() => {
+    if (!isOffline) return;
+
+    const checkConnection = async () => {
+      const isHealthy = await checkApiHealth();
+      if (isHealthy) {
+        console.log("🌐 Connection restored - going back online");
+        setOffline(false);
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
+  }, [isOffline, setOffline]);
+
+  if (!isOffline) return null;
+
+  return (
+    <View className="bg-orange-400 px-4 pb-6 flex-row items-center justify-center">
+      <Text className="text-white text-sm font-medium">
+        Ожидание подключения к интернету...
+      </Text>
     </View>
   );
 }

@@ -24,7 +24,7 @@ apiClient.interceptors.request.use(
       timeout: config.timeout,
     });
 
-    const token = useAuthStore.getState().token;
+    const token = useAuthStore.getState().accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log("🔑 Added Authorization token");
@@ -52,6 +52,30 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Check for network errors (server unreachable) FIRST
+    const isNetworkError =
+      error.code === "ECONNABORTED" ||
+      error.code === "ERR_NETWORK" ||
+      error.message === "Network Error" ||
+      error.message?.includes("timeout");
+
+    if (isNetworkError) {
+      // Log network errors silently (less verbose)
+      console.log("🌐 Network Error (silent):", {
+        isConnected:
+          typeof navigator !== "undefined" ? navigator.onLine : "unknown",
+        requestURL: `${error.config?.baseURL}${error.config?.url}`,
+        timeout: error.config?.timeout,
+        method: error.config?.method?.toUpperCase(),
+        timestamp: new Date().toISOString(),
+        errorType: "NETWORK_UNREACHABLE",
+      });
+
+      // Don't attempt token refresh for network errors
+      return Promise.reject(error);
+    }
+
+    // Log non-network errors normally
     console.error("❌ API Response Error:", {
       message: error.message,
       code: error.code,
@@ -64,18 +88,6 @@ apiClient.interceptors.response.use(
       fullURL: `${error.config?.baseURL}${error.config?.url}`,
     });
 
-    // Additional network debugging
-    if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
-      console.log("🔍 Network Error Details:", {
-        isConnected:
-          typeof navigator !== "undefined" ? navigator.onLine : "unknown",
-        requestURL: `${error.config?.baseURL}${error.config?.url}`,
-        timeout: error.config?.timeout,
-        method: error.config?.method?.toUpperCase(),
-        timestamp: new Date().toISOString(),
-      });
-    }
-
     // Enhanced error logging by status code
     if (error.response?.status) {
       const status = error.response.status;
@@ -87,7 +99,7 @@ apiClient.interceptors.response.use(
       });
     }
 
-    // Handle 401 Unauthorized - try to refresh token
+    // Handle 401 Unauthorized - try to refresh token (only if not a network error)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -105,10 +117,10 @@ apiClient.interceptors.response.use(
           const newTokens = response.data.data;
 
           // Update tokens in store
-          authStore.updateTokens(
-            newTokens.access_token,
-            newTokens.refresh_token
-          );
+          authStore.updateTokens({
+            accessToken: newTokens.access_token,
+            refreshToken: newTokens.refresh_token,
+          });
 
           // Update the original request with new token
           originalRequest.headers.Authorization = `Bearer ${newTokens.access_token}`;
@@ -134,3 +146,52 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Health check function for testing connectivity
+export const checkApiHealth = async (): Promise<boolean> => {
+  const endpointsToTry = [
+    "/", // Root endpoint
+    "/api", // API root
+    "/api/v1", // API version endpoint
+  ];
+
+  for (const endpoint of endpointsToTry) {
+    try {
+      console.log(`🌐 Trying health check on: ${endpoint}`);
+
+      // Make a simple HEAD request
+      const response = await apiClient.head(endpoint, {
+        timeout: 5000,
+        validateStatus: () => true, // Accept any HTTP status as "server reachable"
+      });
+
+      console.log(
+        `🌐 API Health Check SUCCESS: Server is reachable via ${endpoint}`
+      );
+      return true;
+    } catch (error: any) {
+      console.log(`🌐 Health check failed for ${endpoint}:`, error.message);
+
+      // Check if it's a network connectivity issue
+      const isNetworkError =
+        error?.code === "ECONNABORTED" ||
+        error?.code === "ERR_NETWORK" ||
+        error?.message === "Network Error" ||
+        error?.message?.includes("timeout") ||
+        error?.message?.includes("ECONNREFUSED");
+
+      if (!isNetworkError) {
+        // Server responded with some error, but it's reachable
+        console.log(
+          `🌐 API Health Check: Server reachable via ${endpoint} (with error)`
+        );
+        return true;
+      }
+
+      // Continue to next endpoint if this one failed with network error
+    }
+  }
+
+  console.log("🌐 API Health Check FAILED: All endpoints unreachable");
+  return false;
+};

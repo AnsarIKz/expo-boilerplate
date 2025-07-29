@@ -177,11 +177,7 @@ const AnonymousSettings = () => {
 // Настройки для авторизованного пользователя
 const AuthenticatedSettings = () => {
   const [notifications, setNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [biometric, setBiometric] = useState(false);
-  const [autoSync, setAutoSync] = useState(true);
 
   const handleLanguage = () => {
     Alert.alert("Язык", "Выберите язык интерфейса", [
@@ -193,34 +189,13 @@ const AuthenticatedSettings = () => {
 
   const handleCurrency = () => {
     Alert.alert("Валюта", "Выберите валюту", [
-      { text: "RUB", onPress: () => console.log("RUB selected") },
-      { text: "USD", onPress: () => console.log("USD selected") },
-      { text: "EUR", onPress: () => console.log("EUR selected") },
+      { text: "KZT", onPress: () => console.log("KZT selected") },
       { text: "Отмена", style: "cancel" },
     ]);
   };
 
-  const handlePrivacy = () => {
-    console.log("Privacy settings");
-  };
-
-  const handlePaymentMethods = () => {
-    console.log("Payment methods");
-  };
-
-  const handleExportData = () => {
-    Alert.alert(
-      "Экспорт данных",
-      "Ваши данные будут отправлены на указанный email",
-      [
-        { text: "Отмена", style: "cancel" },
-        { text: "Экспортировать", onPress: () => console.log("Export data") },
-      ]
-    );
-  };
-
   return (
-    <View>
+    <View className="px-4">
       {/* Уведомления */}
       <View className="mb-6">
         <Typography variant="h6" className="text-text-primary mx-4 mb-3">
@@ -234,24 +209,6 @@ const AuthenticatedSettings = () => {
           type="switch"
           value={notifications}
           onValueChange={setNotifications}
-        />
-
-        <SettingItem
-          icon="phone-portrait-outline"
-          title="Push-уведомления"
-          subtitle="Уведомления на устройство"
-          type="switch"
-          value={pushNotifications}
-          onValueChange={setPushNotifications}
-        />
-
-        <SettingItem
-          icon="mail-outline"
-          title="Email-уведомления"
-          subtitle="Уведомления на почту"
-          type="switch"
-          value={emailNotifications}
-          onValueChange={setEmailNotifications}
         />
       </View>
 
@@ -281,65 +238,9 @@ const AuthenticatedSettings = () => {
         <SettingItem
           icon="cash-outline"
           title="Валюта"
-          subtitle="RUB"
+          subtitle="KZT"
           type="action"
           onValueChange={() => handleCurrency()}
-        />
-      </View>
-
-      {/* Безопасность */}
-      <View className="mb-6">
-        <Typography variant="h6" className="text-text-primary mx-4 mb-3">
-          Безопасность
-        </Typography>
-
-        <SettingItem
-          icon="finger-print-outline"
-          title="Биометрическая аутентификация"
-          subtitle="Вход по отпечатку пальца или Face ID"
-          type="switch"
-          value={biometric}
-          onValueChange={setBiometric}
-        />
-
-        <SettingItem
-          icon="shield-outline"
-          title="Конфиденциальность"
-          subtitle="Настройки приватности данных"
-          type="action"
-          onValueChange={() => handlePrivacy()}
-        />
-      </View>
-
-      {/* Аккаунт */}
-      <View className="mb-6">
-        <Typography variant="h6" className="text-text-primary mx-4 mb-3">
-          Аккаунт
-        </Typography>
-
-        <SettingItem
-          icon="card-outline"
-          title="Способы оплаты"
-          subtitle="Управление картами и платежами"
-          type="action"
-          onValueChange={() => handlePaymentMethods()}
-        />
-
-        <SettingItem
-          icon="sync-outline"
-          title="Автосинхронизация"
-          subtitle="Синхронизация данных между устройствами"
-          type="switch"
-          value={autoSync}
-          onValueChange={setAutoSync}
-        />
-
-        <SettingItem
-          icon="download-outline"
-          title="Экспорт данных"
-          subtitle="Скачать копию ваших данных"
-          type="action"
-          onValueChange={() => handleExportData()}
         />
       </View>
     </View>

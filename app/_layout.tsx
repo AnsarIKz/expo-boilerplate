@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import "../global.css";
 
+import { OfflineIndicator } from "@/components/ui/Toast";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { CityProvider } from "@/providers/CityProvider";
 import { FiltersProvider } from "@/providers/FiltersProvider";
@@ -97,6 +98,7 @@ export default function RootLayout() {
                   />
                 </Stack>
                 <StatusBar style="dark" />
+                <OfflineIndicator />
               </ThemeProvider>
             </ToastProvider>
           </FiltersProvider>

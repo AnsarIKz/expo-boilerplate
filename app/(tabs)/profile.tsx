@@ -9,8 +9,7 @@ import { AuthRequired } from "@/components/ui/AuthRequired";
 import { Card } from "@/components/ui/Card";
 import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
-import { useDeleteAccount, useLogout, useSession } from "@/hooks/api/useAuth";
-import { useToast } from "@/providers/ToastProvider";
+import { useDeleteAccount, useLogout } from "@/hooks/api/useAuth";
 import { useAuthStore } from "@/stores/authStore";
 
 // Компонент для пункта меню профиля
@@ -262,10 +261,8 @@ const AuthenticatedProfile = ({
 
 export default function ProfileScreen() {
   const { isAuthenticated, user, anonymousUserId } = useAuthStore();
-  const { showSuccess, showError } = useToast();
   const logoutMutation = useLogout();
   const deleteAccountMutation = useDeleteAccount();
-  const sessionQuery = useSession();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogout = () => {

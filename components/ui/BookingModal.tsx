@@ -180,28 +180,25 @@ export function BookingDetailsModal({
 
           {/* Название ресторана и дата */}
           <View className="mb-6">
-            <View className="flex-row justify-between items-start mb-2">
-              <Typography
-                variant="h4"
-                className="text-text-primary font-bold flex-1 mr-4"
-              >
-                {booking.restaurantName}
+            {/* Название ресторана */}
+            <Typography
+              variant="h4"
+              className="text-text-primary font-bold mb-3"
+            >
+              {booking.restaurantName}
+            </Typography>
+
+            {/* Дата и время */}
+            <View className="flex-row items-center justify-between mb-2">
+              <Typography variant="body2" color="secondary" className="text-xs">
+                {formatFullDate(booking.date)}
               </Typography>
-              <View className="items-end">
-                <Typography
-                  variant="body2"
-                  color="secondary"
-                  className="text-xs"
-                >
-                  {formatFullDate(booking.date)}
-                </Typography>
-                <Typography
-                  variant="h6"
-                  className="text-text-primary font-semibold"
-                >
-                  {booking.time}
-                </Typography>
-              </View>
+              <Typography
+                variant="h6"
+                className="text-text-primary font-semibold"
+              >
+                {booking.time}
+              </Typography>
             </View>
 
             {restaurant?.location?.address && (
