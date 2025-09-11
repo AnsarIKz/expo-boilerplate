@@ -34,7 +34,7 @@ function AuthComponent() {
   const handleSendCode = async () => {
     try {
       await sendVerification.mutateAsync({
-        phoneNumber: "+77001234567",
+        phone_number: "+77001234567",
       });
     } catch (error) {
       // Handle error
@@ -44,10 +44,10 @@ function AuthComponent() {
   const handleRegister = async () => {
     try {
       await verifyAndRegister.mutateAsync({
-        phoneNumber: "+77001234567",
+        phone_number: "+77001234567",
         code: "123456",
-        firstName: "John",
-        lastName: "Doe",
+        first_name: "John",
+        last_name: "Doe",
         password: "password123",
       });
       // User is automatically logged in via auth store

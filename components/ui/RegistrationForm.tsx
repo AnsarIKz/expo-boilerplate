@@ -33,6 +33,14 @@ export function RegistrationForm({
   const { showSuccess, showWarning } = useToast();
 
   const handleRegister = async () => {
+    // Prevent multiple submissions
+    if (verifyAndRegisterMutation.isPending) {
+      console.log(
+        "⏳ Registration already in progress, ignoring duplicate call"
+      );
+      return;
+    }
+
     if (!firstName.trim() || !lastName.trim() || !password.trim()) {
       showWarning("Ошибка", "Заполните все поля");
       return;
@@ -49,23 +57,31 @@ export function RegistrationForm({
     }
 
     try {
-      await verifyAndRegisterMutation.mutateAsync({
+      console.log("🚀 RegistrationForm: Starting registration:", {
         phoneNumber,
         code,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        timestamp: new Date().toISOString(),
+      });
+
+      await verifyAndRegisterMutation.mutateAsync({
+        phone_number: phoneNumber,
+        code,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         password: password.trim(),
       });
 
+      console.log("✅ RegistrationForm: Registration completed successfully");
+
       // Success notification is handled in the hook
 
-      // Delayed close to show success message
-      setTimeout(() => {
-        onSuccess?.();
-        onClose();
-      }, 2000);
+      // Call success callback immediately and close
+      onSuccess?.();
+      onClose();
     } catch (error: any) {
-      console.error("Registration error:", error);
+      console.error("❌ RegistrationForm: Registration error:", error);
       // Error notifications are now handled in the hook
     }
   };

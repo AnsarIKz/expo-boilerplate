@@ -1,12 +1,24 @@
 import { useAuthStore } from "@/stores/authStore";
 import axios from "axios";
 
-// Base URL - you can put this in env variables later
-export const API_BASE_URL = "http://192.168.43.11:7009"; // Replace with your actual API URL
+// Flag to prevent multiple concurrent refresh attempts
+let isRefreshing = false;
+let failedRequestsQueue: any[] = [];
+
+// Base URLs for Django Restaurant API
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://api-production-4ce8.up.railway.app"; // Django API URL
+export const API_PREFIX = "/api"; // API prefix according to documentation
+
+// Debug logging
+console.log("🔧 API Configuration Debug:");
+console.log("Normalized API_BASE_URL:", API_BASE_URL);
+console.log("Final baseURL:", `${API_BASE_URL}${API_PREFIX}`);
 
 // Create axios instance
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}${API_PREFIX}`,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -16,9 +28,12 @@ export const apiClient = axios.create({
 // Request interceptor to add auth token and logging
 apiClient.interceptors.request.use(
   (config) => {
+    const fullUrl = `${config.baseURL}${config.url}`;
     console.log("🚀 API Request:", {
       method: config.method?.toUpperCase(),
-      url: `${config.baseURL}${config.url}`,
+      baseURL: config.baseURL,
+      endpoint: config.url,
+      fullURL: fullUrl,
       headers: config.headers,
       data: config.data,
       timeout: config.timeout,
@@ -100,17 +115,40 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized - try to refresh token (only if not a network error)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // BUT exclude refresh token endpoint to prevent infinite loops
+    const isRefreshTokenEndpoint = originalRequest.url?.includes(
+      "/auth/refresh-token/"
+    );
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshTokenEndpoint
+    ) {
       originalRequest._retry = true;
 
       const authStore = useAuthStore.getState();
       const refreshToken = authStore.refreshToken;
 
       if (refreshToken) {
+        // If already refreshing, queue this request
+        if (isRefreshing) {
+          console.log("🔄 Token refresh already in progress, queueing request");
+          return new Promise((resolve, reject) => {
+            failedRequestsQueue.push({
+              resolve,
+              reject,
+              config: originalRequest,
+            });
+          });
+        }
+
+        isRefreshing = true;
+
         try {
           console.log("🔄 Attempting token refresh due to 401 error");
 
-          const response = await apiClient.post("/api/v1/auth/refresh-token", {
+          const response = await apiClient.post("/auth/refresh-token/", {
             refresh_token: refreshToken,
           });
 
@@ -129,18 +167,46 @@ apiClient.interceptors.response.use(
             "✅ Token refreshed successfully, retrying original request"
           );
 
+          // Process queued requests with new token
+          failedRequestsQueue.forEach(({ resolve, config }) => {
+            config.headers.Authorization = `Bearer ${newTokens.access_token}`;
+            resolve(apiClient(config));
+          });
+          failedRequestsQueue = [];
+
           // Retry the original request
           return apiClient(originalRequest);
         } catch (refreshError) {
           console.error("❌ Token refresh failed:", refreshError);
           console.log("🔓 Auto logout due to refresh failure");
+
+          // Reject all queued requests
+          failedRequestsQueue.forEach(({ reject }) => {
+            reject(refreshError);
+          });
+          failedRequestsQueue = [];
+
           authStore.logout();
           return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
       } else {
         console.log("🔓 No refresh token available - Auto logout");
         authStore.logout();
       }
+    }
+
+    // Handle 401 on refresh token endpoint specifically - logout immediately
+    if (error.response?.status === 401 && isRefreshTokenEndpoint) {
+      console.log("🔓 Refresh token is invalid - Auto logout");
+
+      // Reset refresh flags to prevent stuck states
+      isRefreshing = false;
+      failedRequestsQueue = [];
+
+      const authStore = useAuthStore.getState();
+      authStore.logout();
     }
 
     return Promise.reject(error);
@@ -150,9 +216,8 @@ apiClient.interceptors.response.use(
 // Health check function for testing connectivity
 export const checkApiHealth = async (): Promise<boolean> => {
   const endpointsToTry = [
-    "/", // Root endpoint
-    "/api", // API root
-    "/api/v1", // API version endpoint
+    "/health/", // Django health endpoint
+    "/", // API root
   ];
 
   for (const endpoint of endpointsToTry) {

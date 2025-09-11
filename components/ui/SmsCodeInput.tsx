@@ -12,6 +12,7 @@ interface SmsCodeInputProps {
   onVerify: (code: string) => void;
   onBack: () => void;
   onClose: () => void;
+  isLoginMode?: boolean;
 }
 
 export function SmsCodeInput({
@@ -19,6 +20,7 @@ export function SmsCodeInput({
   onVerify,
   onBack,
   onClose,
+  isLoginMode = false,
 }: SmsCodeInputProps) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [resendTimer, setResendTimer] = useState(29);
@@ -52,13 +54,20 @@ export function SmsCodeInput({
     // Auto verify when all fields are filled
     if (newCode.every((digit) => digit !== "")) {
       const fullCode = newCode.join("");
-      console.log("✅ SmsCodeInput: Code complete, showing registration:", {
+      console.log("✅ SmsCodeInput: Code complete:", {
         code: fullCode,
         phoneNumber,
+        isLoginMode,
         timestamp: new Date().toISOString(),
       });
-      // Instead of calling onVerify directly, show registration form
-      setShowRegistration(true);
+
+      if (isLoginMode) {
+        // For login mode, call onVerify directly
+        onVerify(fullCode);
+      } else {
+        // For registration mode, show registration form
+        setShowRegistration(true);
+      }
     }
 
     console.log("📱 SmsCodeInput: Code changed:", {
@@ -87,7 +96,7 @@ export function SmsCodeInput({
       try {
         console.log("📤 SmsCodeInput: Sending resend request");
         await sendVerificationMutation.mutateAsync({
-          phoneNumber,
+          phone_number: phoneNumber,
         });
 
         // Success notification is handled in the hook

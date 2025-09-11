@@ -1,6 +1,7 @@
+import { useTimeSlots } from "@/hooks/useTimeSlots";
 import { useToast } from "@/providers/ToastProvider";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, ScrollView, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Restaurant } from "../../entities/Restaurant";
@@ -9,6 +10,7 @@ import { Colors } from "../tokens";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 import { Input } from "./Input";
+import { TimeSlotSelector } from "./TimeSlotSelector";
 import { Typography } from "./Typography";
 
 interface BookingCreateModalProps {
@@ -53,32 +55,7 @@ const generateDateOptions = () => {
 
 const DATE_OPTIONS = generateDateOptions();
 
-const TIME_SLOTS = [
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
-  "21:30",
-  "22:00",
-  "22:30",
-];
+// Будем получать временные слоты динамически через API
 
 const BookingSummary = ({
   restaurant,
@@ -169,6 +146,23 @@ export function BookingCreateModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { showWarning, showSuccess } = useToast();
+
+  // Получаем временные слоты для выбранной даты
+  const {
+    timeSlots,
+    isLoading: isLoadingAvailability,
+    error: availabilityError,
+    hasAvailableSlots,
+    isTimeAvailable,
+    restaurantInfo,
+  } = useTimeSlots(restaurant.id, selectedDate);
+
+  // Сбрасываем выбранное время, если оно недоступно для новой даты
+  useEffect(() => {
+    if (selectedTime && !isTimeAvailable(selectedTime)) {
+      setSelectedTime("");
+    }
+  }, [selectedTime, isTimeAvailable]);
 
   const isDateTimeValid = selectedDate && selectedTime && selectedGuests;
   const isFormValid = customerName.trim() && customerPhone.trim();
@@ -285,23 +279,86 @@ export function BookingCreateModal({
 
         {/* Time Selection */}
         <View className="mb-8">
-          <Typography
-            variant="h6"
-            className="mb-4 text-neutral-900 font-semibold"
-          >
-            Время
-          </Typography>
-          <View className="flex-row flex-wrap justify-center gap-3">
-            {TIME_SLOTS.map((time) => (
-              <View key={time} className="mb-2">
-                <Chip
-                  label={time}
-                  isSelected={selectedTime === time}
-                  onPress={() => setSelectedTime(time)}
-                />
-              </View>
-            ))}
-          </View>
+          {selectedDate ? (
+            <>
+              {isLoadingAvailability ? (
+                <View className="py-8 items-center">
+                  <Typography
+                    variant="h6"
+                    className="mb-4 text-neutral-900 font-semibold"
+                  >
+                    Время
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    className="text-text-secondary text-center"
+                  >
+                    Загружаем свободные слоты...
+                  </Typography>
+                </View>
+              ) : availabilityError ? (
+                <View className="py-8 items-center">
+                  <Typography
+                    variant="h6"
+                    className="mb-4 text-neutral-900 font-semibold"
+                  >
+                    Время
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    className="text-red-500 text-center mb-4"
+                  >
+                    Ошибка загрузки доступности. Попробуйте позже.
+                  </Typography>
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Просто сбрасываем дату, чтобы заставить перезагрузить данные
+                      const currentDate = selectedDate;
+                      setSelectedDate("");
+                      setTimeout(() => setSelectedDate(currentDate), 100);
+                    }}
+                    className="bg-primary-500 px-4 py-2 rounded-lg"
+                  >
+                    <Typography variant="body2" className="text-white">
+                      Повторить
+                    </Typography>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <TimeSlotSelector
+                    timeSlots={timeSlots}
+                    selectedTime={selectedTime}
+                    onTimeSelect={setSelectedTime}
+                    restaurantInfo={
+                      restaurantInfo
+                        ? {
+                            dayOfWeek: restaurantInfo.dayOfWeek,
+                            openingTime: restaurantInfo.openingTime,
+                            closingTime: restaurantInfo.closingTime,
+                          }
+                        : undefined
+                    }
+                  />
+                </>
+              )}
+            </>
+          ) : (
+            <View className="py-8 items-center">
+              <Typography
+                variant="h6"
+                className="mb-4 text-neutral-900 font-semibold"
+              >
+                Время
+              </Typography>
+              <Typography
+                variant="body2"
+                className="text-text-secondary text-center"
+              >
+                Сначала выберите дату, чтобы увидеть доступные времена
+              </Typography>
+            </View>
+          )}
         </View>
 
         {/* Booking Summary */}

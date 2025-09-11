@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,11 +13,17 @@ import { useBookingStore } from "@/stores/bookingStore";
 import { Booking } from "@/types/booking";
 
 export default function BookingsScreen() {
-  const { bookings, cancelBooking } = useBookingStore();
+  const { bookings, cancelBooking, loadBookings, isLoading } =
+    useBookingStore();
   const { data: restaurants = [] } = useRestaurants();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Загрузка бронирований при монтировании компонента
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   // Сортировка бронирований по дате
   const sortedBookings = useMemo(() => {
@@ -45,10 +51,14 @@ export default function BookingsScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Симуляция обновления данных
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setRefreshing(false);
-  }, []);
+    try {
+      await loadBookings();
+    } catch (error) {
+      console.error("Failed to refresh bookings:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadBookings]);
 
   const handleBookingPress = useCallback((booking: Booking) => {
     setSelectedBooking(booking);
@@ -56,12 +66,19 @@ export default function BookingsScreen() {
   }, []);
 
   const handleCancelBooking = useCallback(
-    (booking: Booking) => {
-      cancelBooking(booking.id);
-      Alert.alert(
-        "Бронирование отменено",
-        "Ваше бронирование было успешно отменено."
-      );
+    async (booking: Booking) => {
+      try {
+        await cancelBooking(booking.id);
+        Alert.alert(
+          "Бронирование отменено",
+          "Ваше бронирование было успешно отменено."
+        );
+      } catch (error) {
+        Alert.alert(
+          "Ошибка",
+          "Не удалось отменить бронирование. Попробуйте позже."
+        );
+      }
     },
     [cancelBooking]
   );

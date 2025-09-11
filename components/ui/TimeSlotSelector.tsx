@@ -9,6 +9,11 @@ interface TimeSlotSelectorProps {
   selectedTime?: string;
   onTimeSelect: (time: string) => void;
   showAllSlots?: boolean;
+  restaurantInfo?: {
+    dayOfWeek: string;
+    openingTime: string;
+    closingTime: string;
+  };
 }
 
 export function TimeSlotSelector({
@@ -16,6 +21,7 @@ export function TimeSlotSelector({
   selectedTime,
   onTimeSelect,
   showAllSlots = false,
+  restaurantInfo,
 }: TimeSlotSelectorProps) {
   const [showAll, setShowAll] = useState(showAllSlots);
 
@@ -26,19 +32,58 @@ export function TimeSlotSelector({
   const slotsToShow = showAll ? availableSlots : availableSlots.slice(0, 8);
 
   if (availableSlots.length === 0) {
+    const isRestaurantClosed =
+      restaurantInfo &&
+      (!restaurantInfo.openingTime ||
+        !restaurantInfo.closingTime ||
+        restaurantInfo.openingTime === restaurantInfo.closingTime);
+
     return (
       <View>
         <Typography variant="body1" className="text-text-primary mb-4">
-          Available time
+          Доступное время
         </Typography>
         <View className="py-8 items-center">
-          <Typography
-            variant="body2"
-            className="text-text-secondary text-center"
-          >
-            No available time slots for this date. Please select a different
-            date.
-          </Typography>
+          {isRestaurantClosed ? (
+            <View className="items-center">
+              <Typography
+                variant="body2"
+                className="text-text-secondary text-center mb-2"
+              >
+                Ресторан закрыт в {restaurantInfo?.dayOfWeek}
+              </Typography>
+              <Typography
+                variant="body2"
+                className="text-text-muted text-center text-sm"
+              >
+                Попробуйте выбрать другую дату
+              </Typography>
+            </View>
+          ) : (
+            <View className="items-center">
+              <Typography
+                variant="body2"
+                className="text-text-secondary text-center mb-2"
+              >
+                Все слоты заняты на эту дату
+              </Typography>
+              {restaurantInfo && (
+                <Typography
+                  variant="body2"
+                  className="text-text-muted text-center text-sm"
+                >
+                  Рабочие часы: {restaurantInfo.openingTime} -{" "}
+                  {restaurantInfo.closingTime}
+                </Typography>
+              )}
+              <Typography
+                variant="body2"
+                className="text-text-muted text-center text-sm mt-1"
+              >
+                Попробуйте выбрать другую дату
+              </Typography>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -47,7 +92,7 @@ export function TimeSlotSelector({
   return (
     <View>
       <Typography variant="body1" className="text-text-primary mb-4">
-        Available time
+        Доступное время
       </Typography>
 
       <View className="flex-row flex-wrap gap-3">
@@ -89,7 +134,7 @@ export function TimeSlotSelector({
           activeOpacity={0.7}
         >
           <Typography variant="body2" className="text-primary-500 text-right">
-            Show all slots
+            Показать все слоты
           </Typography>
         </TouchableOpacity>
       )}
@@ -101,7 +146,7 @@ export function TimeSlotSelector({
           activeOpacity={0.7}
         >
           <Typography variant="body2" className="text-primary-500 text-right">
-            Show less
+            Показать меньше
           </Typography>
         </TouchableOpacity>
       )}

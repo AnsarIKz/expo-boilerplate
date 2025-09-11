@@ -15,13 +15,13 @@ export interface RestaurantLocation {
 }
 
 export interface RestaurantWorkingHours {
-  monday: string;
-  tuesday: string;
-  wednesday: string;
-  thursday: string;
-  friday: string;
-  saturday: string;
-  sunday: string;
+  monday: string | { open: string; close: string };
+  tuesday: string | { open: string; close: string };
+  wednesday: string | { open: string; close: string };
+  thursday: string | { open: string; close: string };
+  friday: string | { open: string; close: string };
+  saturday: string | { open: string; close: string };
+  sunday: string | { open: string; close: string };
 }
 
 export interface RestaurantContact {
@@ -69,6 +69,7 @@ export interface Restaurant {
   updatedAt: string;
   isActive: boolean;
   isFavorite?: boolean;
+  priceRange?: "low" | "medium" | "high";
 }
 
 export interface FilterChip {

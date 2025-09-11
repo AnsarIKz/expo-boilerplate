@@ -6,6 +6,7 @@ import { ParallaxImageCarousel } from "@/components/ui/ParallaxImageCarousel";
 import { RestaurantTags } from "@/components/ui/RestaurantTags";
 import { Typography } from "@/components/ui/Typography";
 import { Restaurant } from "@/entities/Restaurant";
+import { useCreateBooking } from "@/hooks/api/useRestaurantsApi";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useBookingStore } from "@/stores/bookingStore";
@@ -74,8 +75,18 @@ const formatWorkingHours = (
   }
 
   // Форматируем время
-  const [start, end] = todayHours.split("-");
-  return `Сегодня ${start}-${end}`;
+  if (typeof todayHours === "string") {
+    const [start, end] = todayHours.split("-");
+    return `Сегодня ${start}-${end}`;
+  } else if (
+    todayHours &&
+    typeof todayHours === "object" &&
+    "open" in todayHours
+  ) {
+    return `Сегодня ${todayHours.open}-${todayHours.close}`;
+  }
+
+  return "Часы работы уточняйте";
 };
 
 export default function RestaurantDetailScreen() {
@@ -83,6 +94,7 @@ export default function RestaurantDetailScreen() {
   const { data: restaurants = [] } = useRestaurants("");
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addBooking } = useBookingStore();
+  const createBookingMutation = useCreateBooking();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedGuests, setSelectedGuests] = useState(2);
@@ -146,27 +158,47 @@ export default function RestaurantDetailScreen() {
   const handleBookingSubmit = useCallback(
     async (booking: BookingRequest) => {
       try {
+        console.log("🎯 Создаем бронирование:", booking);
+
+        // Используем новый API для создания бронирования
+        const apiBooking = await createBookingMutation.mutateAsync({
+          restaurantId: booking.restaurantId,
+          date: booking.date,
+          time: booking.time,
+          guests: booking.guests,
+          comment: booking.comment,
+        });
+
+        // Также добавляем в локальное хранилище для совместимости
         await addBooking(booking);
+
         Alert.alert(
-          "Booking Confirmed!",
-          `Your table has been reserved for ${booking.guests} ${
-            booking.guests === 1 ? "person" : "people"
-          } on ${new Date(booking.date).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })} at ${booking.time}.`,
-          [{ text: "OK" }]
+          "Бронирование подтверждено!",
+          `Ваш столик на ${booking.guests} ${
+            booking.guests === 1 ? "человека" : "человек"
+          } забронирован на ${new Date(booking.date).toLocaleDateString(
+            "ru-RU",
+            {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            }
+          )} в ${booking.time}.`,
+          [{ text: "ОК" }]
         );
+
+        // Закрываем модальное окно
+        setShowBookingModal(false);
       } catch (error) {
+        console.error("❌ Ошибка создания бронирования:", error);
         Alert.alert(
-          "Booking Failed",
-          "Sorry, we couldn't process your booking. Please try again.",
-          [{ text: "OK" }]
+          "Ошибка бронирования",
+          "К сожалению, не удалось обработать ваше бронирование. Попробуйте еще раз.",
+          [{ text: "ОК" }]
         );
       }
     },
-    [addBooking]
+    [addBooking, createBookingMutation, setShowBookingModal]
   );
 
   // Обработчик скролла для связи с изображением

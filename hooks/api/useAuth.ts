@@ -1,11 +1,20 @@
+import {
+  adaptAuthUserToUser,
+  adaptSessionUserToUser,
+} from "@/lib/api/adapters";
 import { authApi } from "@/lib/api/auth";
 import {
   ApiError,
   ApiResponse,
+  ChangePasswordRequest,
+  ConfirmForgotPasswordRequest,
   DeleteAccountResponse,
+  ForgotPasswordRequest,
   LoginRequest,
+  SendLoginCodeRequest,
   SendVerificationRequest,
   VerifyAndRegisterRequest,
+  VerifyLoginCodeRequest,
 } from "@/lib/api/types";
 import { useToast } from "@/providers/ToastProvider";
 import { useAuthStore } from "@/stores/authStore";
@@ -19,7 +28,7 @@ export function useSendVerification() {
   return useMutation({
     mutationFn: (data: SendVerificationRequest) => {
       console.log("🔄 useSendVerification mutation started:", {
-        phoneNumber: data.phoneNumber,
+        phoneNumber: data.phone_number,
         timestamp: new Date().toISOString(),
       });
       return authApi.sendVerification(data);
@@ -27,7 +36,7 @@ export function useSendVerification() {
     retry: false, // Disable automatic retries
     onSuccess: (data, variables) => {
       console.log("✅ useSendVerification SUCCESS:", {
-        phoneNumber: variables.phoneNumber,
+        phoneNumber: variables.phone_number,
         response: data,
         timestamp: new Date().toISOString(),
       });
@@ -39,7 +48,7 @@ export function useSendVerification() {
     },
     onError: (error: any, variables) => {
       console.error("❌ useSendVerification ERROR:", {
-        phoneNumber: variables.phoneNumber,
+        phoneNumber: variables.phone_number,
         error: error,
         timestamp: new Date().toISOString(),
       });
@@ -64,7 +73,7 @@ export function useSendVerification() {
     },
     onSettled: (data, error, variables) => {
       console.log("🏁 useSendVerification SETTLED:", {
-        phoneNumber: variables.phoneNumber,
+        phoneNumber: variables.phone_number,
         success: !error,
         timestamp: new Date().toISOString(),
       });
@@ -92,21 +101,21 @@ export function useLogin() {
 
       console.log("✅ useLogin SUCCESS:", {
         phoneNumber: variables.phoneNumber,
-        user: responseData.user,
+        user: adaptAuthUserToUser(responseData.user),
         hasToken: !!responseData.access_token,
         timestamp: new Date().toISOString(),
       });
 
       showSuccess(
         "Вход выполнен",
-        `Добро пожаловать, ${responseData.user.firstName}!`
+        `Добро пожаловать, ${responseData.user.first_name}!`
       );
 
       // Auto login after successful authentication
       login({
         accessToken: responseData.access_token,
         refreshToken: responseData.refresh_token,
-        user: responseData.user,
+        user: adaptAuthUserToUser(responseData.user),
       });
 
       // Invalidate session query to trigger fresh data fetch
@@ -157,10 +166,10 @@ export function useVerifyAndRegister() {
   return useMutation({
     mutationFn: (data: VerifyAndRegisterRequest) => {
       console.log("🔄 useVerifyAndRegister mutation started:", {
-        phoneNumber: data.phoneNumber,
+        phoneNumber: data.phone_number,
         code: data.code,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        firstName: data.first_name,
+        lastName: data.last_name,
         timestamp: new Date().toISOString(),
       });
       return authApi.verifyAndRegister(data);
@@ -170,22 +179,22 @@ export function useVerifyAndRegister() {
       const responseData = data.data;
 
       console.log("✅ useVerifyAndRegister SUCCESS:", {
-        phoneNumber: variables.phoneNumber,
-        user: responseData.user,
+        phoneNumber: variables.phone_number,
+        user: adaptAuthUserToUser(responseData.user),
         hasToken: !!responseData.access_token,
         timestamp: new Date().toISOString(),
       });
 
       showSuccess(
         "Регистрация успешна",
-        `Добро пожаловать, ${responseData.user.firstName}!`
+        `Добро пожаловать, ${responseData.user.first_name}!`
       );
 
       // Auto login after successful registration
       login({
         accessToken: responseData.access_token,
         refreshToken: responseData.refresh_token,
-        user: responseData.user,
+        user: adaptAuthUserToUser(responseData.user),
       });
 
       // Invalidate session query to trigger fresh data fetch
@@ -193,7 +202,7 @@ export function useVerifyAndRegister() {
     },
     onError: (error: any, variables) => {
       console.error("❌ useVerifyAndRegister ERROR:", {
-        phoneNumber: variables.phoneNumber,
+        phoneNumber: variables.phone_number,
         error: error,
         timestamp: new Date().toISOString(),
       });
@@ -220,7 +229,7 @@ export function useVerifyAndRegister() {
     },
     onSettled: (data, error, variables) => {
       console.log("🏁 useVerifyAndRegister SETTLED:", {
-        phoneNumber: variables.phoneNumber,
+        phoneNumber: variables.phone_number,
         success: !error,
         timestamp: new Date().toISOString(),
       });
@@ -397,7 +406,7 @@ export function useSession() {
       });
 
       // Update user profile in store
-      updateUserProfile(query.data.user);
+      updateUserProfile(adaptSessionUserToUser(query.data.user));
     }
   }, [query.data, updateUserProfile]);
 
@@ -448,6 +457,239 @@ export function useRefreshSession() {
     mutationFn: () => {
       console.log("🔄 Manual session refresh triggered");
       return refetch();
+    },
+  });
+}
+
+// SMS Login hooks
+export function useSendLoginCode() {
+  const { showError, showSuccess } = useToast();
+
+  return useMutation({
+    mutationFn: (data: SendLoginCodeRequest) => {
+      console.log("🔄 useSendLoginCode mutation started:", {
+        phoneNumber: data.phone_number,
+        timestamp: new Date().toISOString(),
+      });
+      return authApi.sendLoginCode(data);
+    },
+    retry: false,
+    onSuccess: (data, variables) => {
+      console.log("✅ useSendLoginCode SUCCESS:", {
+        phoneNumber: variables.phone_number,
+        response: data,
+        timestamp: new Date().toISOString(),
+      });
+
+      showSuccess(
+        "Код отправлен",
+        data.data?.message || data.message || "SMS код для входа отправлен"
+      );
+    },
+    onError: (error: any, variables) => {
+      console.error("❌ useSendLoginCode ERROR:", {
+        phoneNumber: variables.phone_number,
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      let errorMessage = "Ошибка отправки кода";
+
+      if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+        errorMessage = "Ошибка сети. Проверьте подключение к интернету";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Пользователь с таким номером не найден";
+      } else if (error.response?.status === 429) {
+        errorMessage = "Слишком много запросов. Попробуйте позже";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError("Ошибка", errorMessage);
+    },
+  });
+}
+
+export function useVerifyLoginCode() {
+  const { showError, showSuccess } = useToast();
+  const queryClient = useQueryClient();
+  const { login } = useAuthStore();
+
+  return useMutation({
+    mutationFn: (data: VerifyLoginCodeRequest) => {
+      console.log("🔄 useVerifyLoginCode mutation started:", {
+        phoneNumber: data.phone_number,
+        timestamp: new Date().toISOString(),
+      });
+      return authApi.verifyLoginCode(data);
+    },
+    retry: false,
+    onSuccess: (data, variables) => {
+      const responseData = data.data;
+
+      console.log("✅ useVerifyLoginCode SUCCESS:", {
+        phoneNumber: variables.phone_number,
+        user: adaptAuthUserToUser(responseData.user),
+        hasToken: !!responseData.access_token,
+        timestamp: new Date().toISOString(),
+      });
+
+      showSuccess(
+        "Вход выполнен",
+        `Добро пожаловать, ${responseData.user.first_name}!`
+      );
+
+      // Auto login after successful authentication
+      login({
+        accessToken: responseData.access_token,
+        refreshToken: responseData.refresh_token,
+        user: adaptAuthUserToUser(responseData.user),
+      });
+
+      // Invalidate session query to trigger fresh data fetch
+      queryClient.invalidateQueries({ queryKey: ["session"] });
+    },
+    onError: (error: any, variables) => {
+      console.error("❌ useVerifyLoginCode ERROR:", {
+        phoneNumber: variables.phone_number,
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      let errorMessage = "Ошибка входа";
+
+      if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+        errorMessage = "Ошибка сети. Проверьте подключение к интернету";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.message || "Неверный код";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError("Ошибка входа", errorMessage);
+    },
+  });
+}
+
+// Password management hooks
+export function useChangePassword() {
+  const { showError, showSuccess } = useToast();
+
+  return useMutation({
+    mutationFn: (data: ChangePasswordRequest) => {
+      console.log("🔄 useChangePassword mutation started:", {
+        timestamp: new Date().toISOString(),
+      });
+      return authApi.changePassword(data);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      console.log("✅ useChangePassword SUCCESS:", {
+        message: data.data?.message || data.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      showSuccess("Пароль изменен", "Ваш пароль успешно изменен");
+    },
+    onError: (error: any) => {
+      console.error("❌ useChangePassword ERROR:", {
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      let errorMessage = "Ошибка изменения пароля";
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          error.response?.data?.message || "Неверный старый пароль";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError("Ошибка", errorMessage);
+    },
+  });
+}
+
+export function useForgotPassword() {
+  const { showError, showSuccess } = useToast();
+
+  return useMutation({
+    mutationFn: (data: ForgotPasswordRequest) => {
+      console.log("🔄 useForgotPassword mutation started:", {
+        phoneNumber: data.phone_number,
+        timestamp: new Date().toISOString(),
+      });
+      return authApi.forgotPassword(data);
+    },
+    retry: false,
+    onSuccess: (data, variables) => {
+      console.log("✅ useForgotPassword SUCCESS:", {
+        phoneNumber: variables.phone_number,
+        message: data.data?.message || data.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      showSuccess(
+        "Код отправлен",
+        "Если номер существует, код сброса был отправлен"
+      );
+    },
+    onError: (error: any, variables) => {
+      console.error("❌ useForgotPassword ERROR:", {
+        phoneNumber: variables.phone_number,
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      let errorMessage = "Ошибка отправки кода сброса";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError("Ошибка", errorMessage);
+    },
+  });
+}
+
+export function useConfirmForgotPassword() {
+  const { showError, showSuccess } = useToast();
+
+  return useMutation({
+    mutationFn: (data: ConfirmForgotPasswordRequest) => {
+      console.log("🔄 useConfirmForgotPassword mutation started:", {
+        phoneNumber: data.phone_number,
+        timestamp: new Date().toISOString(),
+      });
+      return authApi.confirmForgotPassword(data);
+    },
+    retry: false,
+    onSuccess: (data, variables) => {
+      console.log("✅ useConfirmForgotPassword SUCCESS:", {
+        phoneNumber: variables.phone_number,
+        message: data.data?.message || data.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      showSuccess("Пароль сброшен", "Ваш пароль успешно изменен");
+    },
+    onError: (error: any, variables) => {
+      console.error("❌ useConfirmForgotPassword ERROR:", {
+        phoneNumber: variables.phone_number,
+        error: error,
+        timestamp: new Date().toISOString(),
+      });
+
+      let errorMessage = "Ошибка сброса пароля";
+
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.message || "Неверный код";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError("Ошибка", errorMessage);
     },
   });
 }

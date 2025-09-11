@@ -1,5 +1,6 @@
 import { Restaurant } from "@/entities/Restaurant";
 import { useQuery } from "@tanstack/react-query";
+import { useRestaurantApi, useRestaurantsApi } from "./api/useRestaurantsApi";
 
 // Mock API для ресторанов с расширенными данными
 const mockRestaurants: Restaurant[] = [
@@ -236,27 +237,41 @@ const fetchRestaurants = async (
   return mockRestaurants;
 };
 
-// Хук для получения списка ресторанов
+// Хук для получения списка ресторанов (обновлен для использования реального API)
 export const useRestaurants = (searchQuery?: string) => {
-  return useQuery({
-    queryKey: ["restaurants", searchQuery],
-    queryFn: () => fetchRestaurants(searchQuery),
-    enabled: true, // Всегда включен
-  });
+  // Используем реальный API
+  const filters = searchQuery ? { search: searchQuery } : undefined;
+  const apiQuery = useRestaurantsApi(filters);
+
+  // Для обратной совместимости возвращаем тот же формат
+  return {
+    ...apiQuery,
+    data: apiQuery.data || [],
+  };
 };
 
-// Хук для получения ресторана по ID
+// Хук для получения ресторана по ID (обновлен для использования реального API)
 export const useRestaurant = (id: string) => {
-  return useQuery({
-    queryKey: ["restaurant", id],
+  // Используем реальный API
+  const apiQuery = useRestaurantApi(id);
+
+  // Если API не вернул данные, возвращаем mock данные как fallback
+  const fallbackQuery = useQuery({
+    queryKey: ["restaurant-fallback", id],
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
       const restaurant = mockRestaurants.find((r) => r.id === id);
       if (!restaurant) {
         throw new Error("Restaurant not found");
       }
       return restaurant;
     },
-    enabled: !!id,
+    enabled: !!id && !apiQuery.data && !apiQuery.isLoading,
   });
+
+  return {
+    ...apiQuery,
+    data: apiQuery.data || fallbackQuery.data,
+    isLoading: apiQuery.isLoading || fallbackQuery.isLoading,
+    error: apiQuery.error || fallbackQuery.error,
+  };
 };

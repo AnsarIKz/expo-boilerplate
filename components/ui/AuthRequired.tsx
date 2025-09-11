@@ -1,7 +1,8 @@
 import {
-  useLogin,
+  useSendLoginCode,
   useSendVerification,
   useVerifyAndRegister,
+  useVerifyLoginCode,
 } from "@/hooks/api/useAuth";
 import { useToast } from "@/providers/ToastProvider";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +19,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../tokens";
 import { CountrySelector, type Country } from "./CountrySelector";
-import { Input } from "./Input";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { RegistrationForm } from "./RegistrationForm";
 import { SmsCodeInput } from "./SmsCodeInput";
 import type { ToastType } from "./Toast";
 import { Typography } from "./Typography";
@@ -37,11 +38,11 @@ interface LocalToast {
 
 export function AuthRequired({ onClose }: AuthRequiredProps) {
   const [phoneNumber, setPhoneNumber] = useState("00 101 61 10");
-  const [password, setPassword] = useState("");
   const [isCountrySelectorVisible, setIsCountrySelectorVisible] =
     useState(false);
   const [isSmsCodeVisible, setIsSmsCodeVisible] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
   const [localToast, setLocalToast] = useState<LocalToast>({
     type: "error",
     title: "",
@@ -60,7 +61,8 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
   const sendVerificationMutation = useSendVerification();
-  const loginMutation = useLogin();
+  const sendLoginCodeMutation = useSendLoginCode();
+  const verifyLoginCodeMutation = useVerifyLoginCode();
   const verifyAndRegisterMutation = useVerifyAndRegister();
   const { showSuccess, showWarning } = useToast();
 
@@ -148,47 +150,57 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
     }
 
     if (isLoginMode) {
-      // Login mode - require password
-      if (!password.trim()) {
-        showLocalToast("warning", "Ошибка", "Введите пароль");
-        return;
-      }
-
-      console.log("🔐 AuthRequired: Attempting login:", {
+      // Login mode - send login SMS code
+      console.log("📤 AuthRequired: Sending login SMS code:", {
         phoneNumber: fullPhoneNumber,
         timestamp: new Date().toISOString(),
       });
 
-      loginMutation.mutate(
+      sendLoginCodeMutation.mutate(
+        { phone_number: fullPhoneNumber },
         {
-          phoneNumber: fullPhoneNumber,
-          password: password.trim(),
-        },
-        {
-          onSuccess: () => {
-            console.log("✅ AuthRequired: Login successful");
-            onClose?.();
-          },
-          onError: (error: any) => {
-            const errorMessage =
-              error.response?.data?.message || "Ошибка входа";
-            showLocalToast("error", "Ошибка", errorMessage);
-            console.error("❌ AuthRequired: Login error:", {
-              error,
+          onSuccess: (result) => {
+            console.log("✅ AuthRequired: Login SMS code sent successfully:", {
+              result,
               timestamp: new Date().toISOString(),
             });
+            setIsSmsCodeVisible(true);
+          },
+          onError: (error: any) => {
+            console.error("❌ AuthRequired: Send login code error:", {
+              error,
+              phoneNumber: fullPhoneNumber,
+              timestamp: new Date().toISOString(),
+            });
+
+            // Check for 404 status (user not found)
+            if (error.response?.status === 404) {
+              console.log(
+                "👤 AuthRequired: User not found, switching to registration mode"
+              );
+              setIsLoginMode(false);
+              showLocalToast(
+                "warning",
+                "Пользователь не найден",
+                "Зарегистрируйтесь, чтобы продолжить"
+              );
+            } else {
+              const errorMessage =
+                error.response?.data?.message || "Ошибка отправки кода";
+              showLocalToast("error", "Ошибка", errorMessage);
+            }
           },
         }
       );
     } else {
-      // Verification mode - send SMS code
+      // Registration mode - send verification SMS code
       console.log("📤 AuthRequired: Sending verification request:", {
         phoneNumber: fullPhoneNumber,
         timestamp: new Date().toISOString(),
       });
 
       sendVerificationMutation.mutate(
-        { phoneNumber: fullPhoneNumber },
+        { phone_number: fullPhoneNumber },
         {
           onSuccess: (result) => {
             console.log("✅ AuthRequired: Verification sent successfully:", {
@@ -213,7 +225,7 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
               showLocalToast(
                 "warning",
                 "Аккаунт существует",
-                "Введите пароль для входа"
+                "Войдите в существующий аккаунт"
               );
             } else {
               const errorMessage =
@@ -249,6 +261,7 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
   const handleSmsVerify = (code: string) => {
     console.log("📱 AuthRequired: SMS Code received:", {
       code,
+      isLoginMode,
       timestamp: new Date().toISOString(),
     });
 
@@ -257,47 +270,45 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
       ""
     )}`;
 
-    // Call verify and register API
-    verifyAndRegisterMutation.mutate(
-      {
-        phoneNumber: fullPhoneNumber,
-        code: code.trim(),
-        firstName: "User", // Default values for now
-        lastName: "Name",
-        password: "defaultPassword123", // Default password
-      },
-      {
-        onSuccess: () => {
-          console.log("✅ AuthRequired: Registration successful");
-          setIsSmsCodeVisible(false);
-          onClose?.();
+    if (isLoginMode) {
+      // Login flow - verify login code
+      verifyLoginCodeMutation.mutate(
+        {
+          phone_number: fullPhoneNumber,
+          code: code.trim(),
         },
-        onError: (error: any) => {
-          console.error("❌ AuthRequired: Registration error:", {
-            error,
-            timestamp: new Date().toISOString(),
-          });
-
-          // Check if user already exists (409 status)
-          if (error.response?.status === 409) {
-            console.log(
-              "👤 AuthRequired: User exists, switching to login mode"
-            );
-            setIsLoginMode(true);
+        {
+          onSuccess: () => {
+            console.log("✅ AuthRequired: Login successful");
+            // Close SMS modal first, then close main modal
             setIsSmsCodeVisible(false);
-            showLocalToast(
-              "warning",
-              "Пользователь уже существует",
-              "Введите пароль для входа"
-            );
-          } else {
+            // Add small delay to ensure SMS modal closes first
+            setTimeout(() => {
+              onClose?.();
+            }, 100);
+          },
+          onError: (error: any) => {
+            console.error("❌ AuthRequired: Login error:", {
+              error,
+              timestamp: new Date().toISOString(),
+            });
+
             const errorMessage =
-              error.response?.data?.message || "Ошибка регистрации";
+              error.response?.data?.message || "Ошибка входа";
             showLocalToast("error", "Ошибка", errorMessage);
-          }
-        },
-      }
-    );
+          },
+        }
+      );
+    } else {
+      // Registration flow - this should not be called directly anymore
+      // The registration should go through RegistrationForm
+      console.warn(
+        "⚠️ AuthRequired: Direct registration call detected - this should go through RegistrationForm"
+      );
+
+      // Show registration form instead
+      setShowRegistration(true);
+    }
   };
 
   const handleSmsBack = () => {
@@ -308,11 +319,24 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
   const handleSmsClose = () => {
     console.log("❌ AuthRequired: SMS close pressed");
     setIsSmsCodeVisible(false);
+    // Don't close the main modal - let user try again or use back button
   };
 
   const dismissKeyboard = () => {
     console.log("⌨️ AuthRequired: Dismissing keyboard");
     Keyboard.dismiss();
+  };
+
+  const handleRegistrationBack = () => {
+    setShowRegistration(false);
+  };
+
+  const handleRegistrationSuccess = () => {
+    setShowRegistration(false);
+    setIsSmsCodeVisible(false);
+    setTimeout(() => {
+      onClose?.();
+    }, 100);
   };
 
   const fullPhoneNumber = `${selectedCountry.dialCode}${phoneNumber.replace(
@@ -321,7 +345,8 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
   )}`;
   const isLoading =
     sendVerificationMutation.isPending ||
-    loginMutation.isPending ||
+    sendLoginCodeMutation.isPending ||
+    verifyLoginCodeMutation.isPending ||
     verifyAndRegisterMutation.isPending;
 
   console.log("🔄 AuthRequired: Component state:", {
@@ -369,8 +394,8 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
                 className="text-black/60 text-[15px] font-medium mb-[22px]"
               >
                 {isLoginMode
-                  ? "Введите пароль для входа"
-                  : "Введите номер телефона"}
+                  ? "Вам будет отправлен SMS-код для входа"
+                  : "Введите номер телефона для регистрации"}
               </Typography>
 
               {/* Phone Input */}
@@ -399,61 +424,43 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
                     placeholderTextColor="#999"
                     className="flex-1 text-black text-base items-center font-normal h-full"
                     keyboardType="phone-pad"
-                    editable={!isLoading && !isLoginMode}
+                    editable={!isLoading}
                     returnKeyType="done"
                     onSubmitEditing={dismissKeyboard}
                     blurOnSubmit={true}
                     style={{
                       fontSize: 16,
-                      color: isLoginMode ? "#999" : "#000000",
+                      color: "#000000",
                       fontFamily: "SF_Pro_Text",
                       textAlignVertical: "center",
                     }}
                   />
 
                   {/* Clear Button */}
-                  {!isLoginMode && (
-                    <TouchableOpacity
-                      className="w-5 h-5 bg-[#a5a5a5] rounded-full items-center justify-center"
-                      onPress={() => setPhoneNumber("")}
-                      disabled={isLoading}
-                    >
-                      <View className="w-[6.67px] h-[6.67px] bg-white rounded-full" />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    className="w-5 h-5 bg-[#a5a5a5] rounded-full items-center justify-center"
+                    onPress={() => setPhoneNumber("")}
+                    disabled={isLoading}
+                  >
+                    <View className="w-[6.67px] h-[6.67px] bg-white rounded-full" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Password Input - Show only in login mode */}
-              {isLoginMode && (
-                <View className="mt-4">
-                  <Input
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Введите пароль"
-                    secureTextEntry
-                    disabled={isLoading}
-                    leftIcon="lock-closed-outline"
-                    className="w-full"
-                  />
-                </View>
-              )}
-
-              {/* Back to Phone Button - Show only in login mode */}
-              {isLoginMode && (
-                <TouchableOpacity
-                  className="mt-3"
-                  onPress={() => {
-                    setIsLoginMode(false);
-                    setPassword("");
-                  }}
-                  disabled={isLoading}
-                >
-                  <Typography className="text-primary-500 text-sm text-center">
-                    Изменить номер телефона
-                  </Typography>
-                </TouchableOpacity>
-              )}
+              {/* Switch between Registration and Login */}
+              <TouchableOpacity
+                className="mt-3"
+                onPress={() => {
+                  setIsLoginMode(!isLoginMode);
+                }}
+                disabled={isLoading}
+              >
+                <Typography className="text-primary-500 text-sm text-center">
+                  {isLoginMode
+                    ? "Нет аккаунта? Зарегистрироваться"
+                    : "Есть аккаунт? Войти"}
+                </Typography>
+              </TouchableOpacity>
             </View>
 
             {/* Bottom Section */}
@@ -461,12 +468,16 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
               {isLoading && (
                 <View className="mb-4">
                   <LoadingSpinner
-                    text={isLoginMode ? "Вход..." : "Отправка кода..."}
+                    text={
+                      isLoginMode
+                        ? "Отправка кода для входа..."
+                        : "Отправка кода регистрации..."
+                    }
                   />
                 </View>
               )}
 
-              {/* Login Button */}
+              {/* SMS Code Button */}
               <TouchableOpacity
                 className={`w-full h-[46px] rounded-xl items-center justify-center border ${
                   isLoading
@@ -483,12 +494,10 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
                   }`}
                 >
                   {isLoading
-                    ? isLoginMode
-                      ? "Вход..."
-                      : "Отправка..."
+                    ? "Отправка..."
                     : isLoginMode
-                    ? "Войти"
-                    : "Войти"}
+                    ? "Получить SMS-код для входа"
+                    : "Получить SMS-код для регистрации"}
                 </Typography>
               </TouchableOpacity>
             </View>
@@ -522,6 +531,23 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
           onVerify={handleSmsVerify}
           onBack={handleSmsBack}
           onClose={handleSmsClose}
+          isLoginMode={isLoginMode}
+        />
+      </Modal>
+
+      {/* Registration Form Modal */}
+      <Modal
+        visible={showRegistration}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleRegistrationBack}
+      >
+        <RegistrationForm
+          phoneNumber={fullPhoneNumber}
+          code="" // We won't have the code here since this is from AuthRequired
+          onBack={handleRegistrationBack}
+          onClose={onClose || (() => {})}
+          onSuccess={handleRegistrationSuccess}
         />
       </Modal>
 
