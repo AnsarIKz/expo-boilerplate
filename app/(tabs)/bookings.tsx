@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, RefreshControl, ScrollView, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BookingCard } from "@/components/ui/BookingCard";
@@ -20,6 +20,38 @@ export default function BookingsScreen() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Helper function to parse booking date and time
+  const parseBookingDateTime = useCallback((date?: string, time?: string) => {
+    try {
+      if (!date || !time) {
+        return new Date(); // Fallback to current date
+      }
+
+      // Handle different date formats
+      let parsedDate: Date;
+
+      if (date.includes("T")) {
+        // ISO format
+        parsedDate = new Date(date);
+      } else {
+        // Try to parse as YYYY-MM-DD format
+        const dateTimeString = `${date} ${time}`;
+        parsedDate = new Date(dateTimeString);
+      }
+
+      return parsedDate;
+    } catch (error) {
+      console.error(`❌ Error parsing date: ${date}, time: ${time}`, error);
+      return new Date(); // Fallback to current date
+    }
+  }, []);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("🔍 BookingsScreen - Current bookings:", bookings.length);
+    console.log("🔍 BookingsScreen - Is loading:", isLoading);
+  }, [bookings, isLoading]);
+
   // Загрузка бронирований при монтировании компонента
   useEffect(() => {
     loadBookings();
@@ -28,33 +60,53 @@ export default function BookingsScreen() {
   // Сортировка бронирований по дате
   const sortedBookings = useMemo(() => {
     return [...bookings].sort((a, b) => {
-      const dateA = new Date(`${a.date} ${a.time}`);
-      const dateB = new Date(`${b.date} ${b.time}`);
+      const dateA = parseBookingDateTime(
+        a.booking_date || a.date,
+        a.booking_time || a.time
+      );
+      const dateB = parseBookingDateTime(
+        b.booking_date || b.date,
+        b.booking_time || b.time
+      );
       return dateB.getTime() - dateA.getTime();
     });
-  }, [bookings]);
+  }, [bookings, parseBookingDateTime]);
 
   // Группировка бронирований
   const groupedBookings = useMemo(() => {
+    const now = new Date();
+
     const upcoming = sortedBookings.filter((booking) => {
-      const bookingDate = new Date(`${booking.date} ${booking.time}`);
-      return bookingDate >= new Date() && booking.status === "confirmed";
+      const bookingDate = parseBookingDateTime(
+        booking.booking_date || booking.date,
+        booking.booking_time || booking.time
+      );
+      return bookingDate >= now && booking.status === "CONFIRMED";
     });
 
     const past = sortedBookings.filter((booking) => {
-      const bookingDate = new Date(`${booking.date} ${booking.time}`);
-      return bookingDate < new Date() || booking.status === "cancelled";
+      const bookingDate = parseBookingDateTime(
+        booking.booking_date || booking.date,
+        booking.booking_time || booking.time
+      );
+      return bookingDate < now || booking.status === "CANCELLED";
     });
 
+    console.log(
+      "🔍 Grouped bookings - Upcoming:",
+      upcoming.length,
+      "Past:",
+      past.length
+    );
     return { upcoming, past };
-  }, [sortedBookings]);
+  }, [sortedBookings, parseBookingDateTime]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await loadBookings();
     } catch (error) {
-      console.error("Failed to refresh bookings:", error);
+      console.error("❌ Failed to refresh bookings:", error);
     } finally {
       setRefreshing(false);
     }
@@ -69,15 +121,8 @@ export default function BookingsScreen() {
     async (booking: Booking) => {
       try {
         await cancelBooking(booking.id);
-        Alert.alert(
-          "Бронирование отменено",
-          "Ваше бронирование было успешно отменено."
-        );
       } catch (error) {
-        Alert.alert(
-          "Ошибка",
-          "Не удалось отменить бронирование. Попробуйте позже."
-        );
+        console.error("Failed to cancel booking:", error);
       }
     },
     [cancelBooking]
@@ -86,13 +131,7 @@ export default function BookingsScreen() {
   const handleRateRestaurant = useCallback(
     (booking: Booking, rating: number) => {
       // Здесь можно добавить логику отправки оценки на сервер
-      console.log(`Rating ${rating} for restaurant ${booking.restaurantName}`);
-      Alert.alert(
-        "Спасибо за оценку!",
-        `Вы поставили ${rating} звезд${
-          rating === 1 ? "у" : rating <= 4 ? "ы" : ""
-        } ресторану ${booking.restaurantName}`
-      );
+      console.log(`Rating ${rating} for restaurant ${booking.restaurant.name}`);
     },
     []
   );
@@ -108,6 +147,19 @@ export default function BookingsScreen() {
     setModalVisible(false);
     setSelectedBooking(null);
   }, []);
+
+  if (isLoading && bookings.length === 0) {
+    return (
+      <SafeAreaView className="flex-1 bg-background-primary">
+        <TitleHeader title="Бронирования" />
+        <View className="flex-1 justify-center items-center">
+          <Typography variant="body1" className="text-text-secondary">
+            Загрузка бронирований...
+          </Typography>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (bookings.length === 0) {
     return (
@@ -144,6 +196,22 @@ export default function BookingsScreen() {
           paddingTop: 16,
         }}
       >
+        {/* Debug: Show all bookings if grouping fails */}
+        {groupedBookings.upcoming.length === 0 &&
+          groupedBookings.past.length === 0 &&
+          sortedBookings.length > 0 && (
+            <View className="mb-6">
+              {sortedBookings.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  restaurant={getRestaurantById(booking.restaurant.id)}
+                  onPress={handleBookingPress}
+                />
+              ))}
+            </View>
+          )}
+
         {/* Предстоящие бронирования */}
         {groupedBookings.upcoming.length > 0 && (
           <View className="mb-6">
@@ -161,7 +229,7 @@ export default function BookingsScreen() {
               <BookingCard
                 key={booking.id}
                 booking={booking}
-                restaurant={getRestaurantById(booking.restaurantId)}
+                restaurant={getRestaurantById(booking.restaurant.id)}
                 onPress={handleBookingPress}
               />
             ))}
@@ -189,7 +257,7 @@ export default function BookingsScreen() {
               <BookingCard
                 key={booking.id}
                 booking={booking}
-                restaurant={getRestaurantById(booking.restaurantId)}
+                restaurant={getRestaurantById(booking.restaurant.id)}
                 onPress={handleBookingPress}
               />
             ))}
@@ -203,7 +271,7 @@ export default function BookingsScreen() {
         booking={selectedBooking}
         restaurant={
           selectedBooking
-            ? getRestaurantById(selectedBooking.restaurantId)
+            ? getRestaurantById(selectedBooking.restaurant.id)
             : undefined
         }
         onClose={closeModal}

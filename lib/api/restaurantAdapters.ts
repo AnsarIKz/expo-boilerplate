@@ -6,6 +6,49 @@ import { DjangoBooking, DjangoRestaurant } from "./restaurant";
  * Адаптеры для преобразования Django Restaurant API ответов в наши типы данных
  */
 
+// Функция для обработки URL изображений - убеждаемся что они абсолютные
+const processImageUrl = (url: string): string => {
+  if (!url) return "";
+
+  // Если URL уже абсолютный, возвращаем как есть
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // Если URL относительный, добавляем базовый URL API
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+  return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+};
+
+// Функция для обработки изображений в новом формате API
+const processImages = (
+  djangoRestaurant: DjangoRestaurant
+): { mainImage: string; allImages: string[] } => {
+  const defaultImage =
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop";
+
+  // Если есть детальные изображения (новый формат)
+  if (djangoRestaurant.images && djangoRestaurant.images.length > 0) {
+    const primaryImage = djangoRestaurant.images.find((img) => img.is_primary);
+    const mainImageUrl =
+      primaryImage?.image_url || djangoRestaurant.images[0].image_url;
+    const mainImage = processImageUrl(mainImageUrl);
+    const allImages = djangoRestaurant.images.map((img) =>
+      processImageUrl(img.image_url)
+    );
+    return { mainImage, allImages };
+  }
+
+  // Если есть простые URL изображений (старый формат)
+  if (djangoRestaurant.image_urls && djangoRestaurant.image_urls.length > 0) {
+    const mainImage = processImageUrl(djangoRestaurant.image_urls[0]);
+    const allImages = djangoRestaurant.image_urls.map(processImageUrl);
+    return { mainImage, allImages };
+  }
+
+  return { mainImage: defaultImage, allImages: [defaultImage] };
+};
+
 // Мапинг Django ресторана в наш формат
 export const adaptDjangoRestaurantToRestaurant = (
   djangoRestaurant: DjangoRestaurant
@@ -36,26 +79,47 @@ export const adaptDjangoRestaurantToRestaurant = (
     })),
   ];
 
-  // Преобразуем features из массива строк в объект булевых значений
-  const featuresObj = {
-    hasDelivery: features.includes("DELIVERY"),
-    hasReservation: features.includes("RESERVATIONS"),
-    hasWifi: features.includes("WIFI"),
-    hasParking: features.includes("PARKING"),
-    hasChildMenu: features.includes("VEGETARIAN_OPTIONS"),
-    hasVeganOptions: features.includes("VEGAN_OPTIONS"),
-    hasAlcohol: features.includes("LIVE_MUSIC"),
-    acceptsCards: features.includes("TAKEOUT"),
-    averagePrice: { min: 2000, max: 8000, currency: "KZT" }, // Примерные значения
-  };
+  // Оставляем features как массив строк для отображения в карточке
+  const featuresList = features;
 
-  // Безопасная обработка изображений
-  const images = djangoRestaurant.images || [];
-  const defaultImage =
-    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop";
+  console.log("🏪 Django features:", features);
+  console.log("🏪 Processed features:", featuresList);
 
-  // Безопасная обработка рабочих часов
+  // Обработка изображений с поддержкой нового формата
+  const { mainImage, allImages } = processImages(djangoRestaurant);
+
+  // Безопасная обработка рабочих часов - поддерживаем строковый формат
   const openingHours = djangoRestaurant.opening_hours || {};
+
+  // Отладочная информация для рабочих часов
+  console.log("🕒 Django opening_hours:", openingHours);
+  console.log("🕒 Django opening_hours type:", typeof openingHours);
+  console.log("🕒 Django opening_hours keys:", Object.keys(openingHours));
+
+  // Функция для нормализации времени работы
+  const normalizeWorkingHours = (
+    hours: string | { open: string; close: string } | undefined,
+    defaultHours: string
+  ): string => {
+    if (!hours) {
+      return defaultHours;
+    }
+
+    // Если это объект с open/close (новый формат Django)
+    if (typeof hours === "object" && hours.open && hours.close) {
+      return `${hours.open} - ${hours.close}`;
+    }
+
+    // Если это строка (старый формат)
+    if (typeof hours === "string") {
+      if (hours.trim() === "" || hours.toLowerCase() === "closed") {
+        return defaultHours;
+      }
+      return hours.trim();
+    }
+
+    return defaultHours;
+  };
 
   // Безопасная обработка типов кухни
   const cuisineTypes = djangoRestaurant.all_cuisine_types || [];
@@ -70,11 +134,8 @@ export const adaptDjangoRestaurantToRestaurant = (
     id: djangoRestaurant.id,
     name: djangoRestaurant.name || "Ресторан",
     description: djangoRestaurant.description || "Описание отсутствует",
-    image:
-      images.length > 0
-        ? images.find((img) => img.is_primary)?.image || images[0].image
-        : defaultImage,
-    images: images.length > 0 ? images.map((img) => img.image) : [defaultImage],
+    image: mainImage,
+    images: allImages,
     rating: djangoRestaurant.average_rating || 0,
     reviewCount: djangoRestaurant.rating_count || 0,
     tags,
@@ -83,35 +144,25 @@ export const adaptDjangoRestaurantToRestaurant = (
       city: "Алматы", // По умолчанию
       district: "Центральный", // По умолчанию
     },
-    workingHours: {
-      monday: openingHours.monday
-        ? `${openingHours.monday.open}-${openingHours.monday.close}`
-        : "10:00-22:00", // По умолчанию
-      tuesday: openingHours.tuesday
-        ? `${openingHours.tuesday.open}-${openingHours.tuesday.close}`
-        : "10:00-22:00",
-      wednesday: openingHours.wednesday
-        ? `${openingHours.wednesday.open}-${openingHours.wednesday.close}`
-        : "10:00-22:00",
-      thursday: openingHours.thursday
-        ? `${openingHours.thursday.open}-${openingHours.thursday.close}`
-        : "10:00-22:00",
-      friday: openingHours.friday
-        ? `${openingHours.friday.open}-${openingHours.friday.close}`
-        : "10:00-23:00",
-      saturday: openingHours.saturday
-        ? `${openingHours.saturday.open}-${openingHours.saturday.close}`
-        : "10:00-23:00",
-      sunday: openingHours.sunday
-        ? `${openingHours.sunday.open}-${openingHours.sunday.close}`
-        : "11:00-22:00",
-    },
+    workingHours: (() => {
+      const normalizedHours = {
+        monday: normalizeWorkingHours(openingHours.monday, "Не работает"),
+        tuesday: normalizeWorkingHours(openingHours.tuesday, "Не работает"),
+        wednesday: normalizeWorkingHours(openingHours.wednesday, "Не работает"),
+        thursday: normalizeWorkingHours(openingHours.thursday, "Не работает"),
+        friday: normalizeWorkingHours(openingHours.friday, "Не работает"),
+        saturday: normalizeWorkingHours(openingHours.saturday, "Не работает"),
+        sunday: normalizeWorkingHours(openingHours.sunday, "Не работает"),
+      };
+      console.log("🕒 Normalized working hours:", normalizedHours);
+      return normalizedHours;
+    })(),
     contact: {
       phone: djangoRestaurant.phone_number || "",
       email: djangoRestaurant.email || "",
       website: djangoRestaurant.website || "",
     },
-    features: featuresObj,
+    features: featuresList,
     cuisine,
     createdAt: djangoRestaurant.created_at,
     updatedAt: djangoRestaurant.updated_at,
@@ -125,34 +176,24 @@ export const adaptDjangoRestaurantToRestaurant = (
 export const adaptDjangoBookingToBooking = (
   djangoBooking: DjangoBooking
 ): Booking => {
-  const restaurantName =
-    typeof djangoBooking.restaurant === "string"
-      ? "Неизвестный ресторан"
-      : djangoBooking.restaurant.name;
-
-  const restaurantId =
-    typeof djangoBooking.restaurant === "string"
-      ? djangoBooking.restaurant
-      : djangoBooking.restaurant.id;
-
-  // Мапинг статусов
-  const statusMap: { [key: string]: "confirmed" | "pending" | "cancelled" } = {
-    CONFIRMED: "confirmed",
-    PENDING: "pending",
-    CANCELLED: "cancelled",
-    COMPLETED: "confirmed", // Завершенные бронирования показываем как подтвержденные
-  };
-
   return {
     id: djangoBooking.id,
-    restaurantId,
-    restaurantName,
+    restaurant: djangoBooking.restaurant,
+    user_name: djangoBooking.user_name,
+    guest_name: djangoBooking.guest_name,
+    booking_date: djangoBooking.booking_date,
+    booking_time: djangoBooking.booking_time,
+    number_of_guests: djangoBooking.number_of_guests,
+    status: djangoBooking.status,
+    created_at: djangoBooking.created_at,
+    // Legacy fields for backward compatibility
+    restaurantId: djangoBooking.restaurant.id,
+    restaurantName: djangoBooking.restaurant.name,
     date: djangoBooking.booking_date,
     time: djangoBooking.booking_time.substring(0, 5), // "19:00:00" -> "19:00"
     guests: djangoBooking.number_of_guests,
-    status: statusMap[djangoBooking.status] || "pending",
-    customerName: "Пользователь", // Django API не предоставляет имя пользователя в бронировании
-    customerPhone: "+7 xxx xxx xx xx", // Заглушка
+    customerName: djangoBooking.guest_name || djangoBooking.user_name,
+    customerPhone: "+7 xxx xxx xx xx",
     comment: djangoBooking.special_requests,
     createdAt: djangoBooking.created_at,
     updatedAt: djangoBooking.updated_at,
@@ -165,6 +206,8 @@ export const adaptBookingRequestToDjango = (
   date: string,
   time: string,
   guests: number,
+  guest_name: string,
+  guest_phone: string,
   comment?: string
 ) => {
   return {
@@ -172,6 +215,8 @@ export const adaptBookingRequestToDjango = (
     booking_date: date,
     booking_time: time + ":00", // "19:00" -> "19:00:00"
     number_of_guests: guests,
+    guest_name: guest_name,
+    guest_phone: guest_phone,
     special_requests: comment || "",
   };
 };

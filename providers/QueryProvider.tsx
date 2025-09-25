@@ -1,3 +1,4 @@
+import { errorHandler } from "@/lib/errorHandler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 
@@ -21,6 +22,8 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000,
       // Повторные запросы при ошибках
       retry: (failureCount, error) => {
+        // Логируем ошибку вместо показа
+        errorHandler.logManualError(error, "React Query retry");
         // Don't retry network errors
         if (isNetworkError(error)) return false;
         return failureCount < 3;
@@ -35,6 +38,8 @@ const queryClient = new QueryClient({
     mutations: {
       // Повторные запросы для мутаций
       retry: (failureCount, error) => {
+        // Логируем ошибку вместо показа
+        errorHandler.logManualError(error, "React Query mutation retry");
         // Don't retry network errors for mutations
         if (isNetworkError(error)) return false;
         return failureCount < 1;

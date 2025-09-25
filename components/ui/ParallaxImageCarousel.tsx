@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
+import { ImageSkeleton } from "./ImageSkeleton";
 
 interface ParallaxImageCarouselProps {
   images: string[];
@@ -27,11 +28,19 @@ export function ParallaxImageCarousel({
   onScroll,
 }: ParallaxImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageLoading, setImageLoading] = useState<boolean[]>(
+    new Array(images.length).fill(true)
+  );
   const scrollViewRef = useRef<ScrollView>(null);
   const internalScrollY = useRef(new Animated.Value(0)).current;
 
   // Используем внешний scrollY если передан, иначе внутренний
   const scrollY = externalScrollY || internalScrollY;
+
+  // Обновляем массив loading состояний при изменении images
+  useEffect(() => {
+    setImageLoading(new Array(images.length).fill(true));
+  }, [images.length]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -51,7 +60,7 @@ export function ParallaxImageCarousel({
         className="bg-neutral-100 items-center justify-center"
         style={{ height }}
       >
-        <View className="w-20 h-20 bg-neutral-200 rounded-lg" />
+        <ImageSkeleton width="100%" height={height} borderRadius={0} />
       </View>
     );
   }
@@ -84,17 +93,31 @@ export function ParallaxImageCarousel({
           contentContainerStyle={{ flexGrow: 1 }}
         >
           {images.map((image, index) => (
-            <Image
-              key={index}
-              source={{ uri: image }}
-              style={{
-                width: screenWidth,
-                height: "100%",
-              }}
-              contentFit="cover"
-              placeholder="https://placehold.co/400x300/f0f0f0/cccccc?text=Загрузка..."
-              transition={200}
-            />
+            <View key={index} style={{ width: screenWidth, height: "100%" }}>
+              {/* Loading skeleton for this specific image */}
+              {imageLoading[index] && (
+                <ImageSkeleton width="100%" height={height} borderRadius={0} />
+              )}
+
+              <Image
+                source={{ uri: image }}
+                style={{
+                  width: screenWidth,
+                  height: "100%",
+                  position: imageLoading[index] ? "absolute" : "relative",
+                  opacity: imageLoading[index] ? 0 : 1,
+                }}
+                contentFit="cover"
+                transition={200}
+                onLoadEnd={() => {
+                  setImageLoading((prev) => {
+                    const newState = [...prev];
+                    newState[index] = false;
+                    return newState;
+                  });
+                }}
+              />
+            </View>
           ))}
         </ScrollView>
       </Animated.View>

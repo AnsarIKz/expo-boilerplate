@@ -139,13 +139,12 @@ export function BookingCreateModal({
   const [selectedGuests, setSelectedGuests] = useState(initialGuests);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [comment, setComment] = useState("");
+  const [guest_name, setGuestName] = useState("");
+  const [guest_phone, setGuestPhone] = useState("");
+  const [special_requests, setSpecialRequests] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { showWarning, showSuccess } = useToast();
+  const { showWarning } = useToast();
 
   // Получаем временные слоты для выбранной даты
   const {
@@ -165,17 +164,16 @@ export function BookingCreateModal({
   }, [selectedTime, isTimeAvailable]);
 
   const isDateTimeValid = selectedDate && selectedTime && selectedGuests;
-  const isFormValid = customerName.trim() && customerPhone.trim();
+  const isFormValid = guest_name.trim() && guest_phone.trim();
 
   const handleClose = () => {
     setStep(startStep);
     setSelectedGuests(initialGuests);
     setSelectedDate("");
     setSelectedTime("");
-    setCustomerName("");
-    setCustomerPhone("");
-    setCustomerEmail("");
-    setComment("");
+    setGuestName("");
+    setGuestPhone("");
+    setSpecialRequests("");
     onClose();
   };
 
@@ -201,19 +199,13 @@ export function BookingCreateModal({
         date: selectedDate,
         time: selectedTime,
         guests: selectedGuests,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerEmail: customerEmail.trim() || undefined,
-        comment: comment.trim() || undefined,
+        customerName: guest_name.trim(),
+        customerPhone: guest_phone.trim(),
+        comment: special_requests.trim() || undefined,
       };
 
       await onSubmit(bookingRequest);
-      showSuccess(
-        "Успешно!",
-        `Столик на ${selectedGuests} ${
-          selectedGuests === 1 ? "человека" : "человек"
-        } забронирован на ${selectedDate} в ${selectedTime}`
-      );
+      // Уведомление показывается в onSubmit callback
       handleClose();
     } catch (error) {
       showWarning("Ошибка", "Не удалось забронировать столик");
@@ -392,8 +384,8 @@ export function BookingCreateModal({
         <View className="pt-6 pb-4">
           <View className="pb-4">
             <Input
-              value={customerName}
-              onChangeText={setCustomerName}
+              value={guest_name}
+              onChangeText={setGuestName}
               placeholder="Введите ваше полное имя"
               autoCapitalize="words"
               leftIcon="person-outline"
@@ -402,8 +394,8 @@ export function BookingCreateModal({
             <View className="h-2 bg-black-500" />
 
             <Input
-              value={customerPhone}
-              onChangeText={setCustomerPhone}
+              value={guest_phone}
+              onChangeText={setGuestPhone}
               placeholder="+7 (___) ___-__-__"
               keyboardType="phone-pad"
               leftIcon="call-outline"
@@ -411,18 +403,8 @@ export function BookingCreateModal({
 
             <View className="h-2 bg-black-500" />
             <Input
-              value={customerEmail}
-              onChangeText={setCustomerEmail}
-              placeholder="your.email@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon="mail-outline"
-            />
-
-            <View className="h-2 bg-black-500" />
-            <Input
-              value={comment}
-              onChangeText={setComment}
+              value={special_requests}
+              onChangeText={setSpecialRequests}
               placeholder="Особые пожелания..."
               multiline
               numberOfLines={3}

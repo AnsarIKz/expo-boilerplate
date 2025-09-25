@@ -13,6 +13,7 @@ interface FilterSectionProps {
   options: FilterOption[];
   onOptionToggle: (id: string) => void;
   multiSelect?: boolean;
+  isLoading?: boolean;
 }
 
 export function FilterSection({
@@ -20,6 +21,7 @@ export function FilterSection({
   options,
   onOptionToggle,
   multiSelect = true,
+  isLoading = false,
 }: FilterSectionProps) {
   const handleOptionPress = useCallback(
     (id: string) => {

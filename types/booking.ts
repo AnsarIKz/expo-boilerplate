@@ -1,18 +1,30 @@
 export interface Booking {
   id: string;
-  restaurantId: string;
-  restaurantName: string;
-  date: string; // ISO string
-  time: string; // Format: "19:00"
-  guests: number;
-  status: "confirmed" | "pending" | "cancelled";
-  customerName: string;
-  customerPhone: string;
+  restaurant: {
+    id: string;
+    name: string;
+    address: string;
+  };
+  user_name: string;
+  guest_name: string | null;
+  booking_date: string; // YYYY-MM-DD format
+  booking_time: string; // HH:MM:SS format
+  number_of_guests: number;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  created_at: string;
+  // Legacy fields for backward compatibility
+  restaurantId?: string;
+  restaurantName?: string;
+  date?: string;
+  time?: string;
+  guests?: number;
+  customerName?: string;
+  customerPhone?: string;
   customerEmail?: string;
   comment?: string;
-  isPaid?: boolean; // Payment status
-  createdAt: string;
-  updatedAt: string;
+  isPaid?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BookingRequest {
@@ -22,7 +34,6 @@ export interface BookingRequest {
   guests: number;
   customerName: string;
   customerPhone: string;
-  customerEmail?: string;
   comment?: string;
 }
 

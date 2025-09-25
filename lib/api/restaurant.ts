@@ -10,9 +10,15 @@ export interface CuisineType {
   is_active: boolean;
 }
 
+export interface RestaurantFeature {
+  value: string;
+  label: string;
+  description: string;
+}
+
 export interface RestaurantImage {
   id: string;
-  image: string;
+  image_url: string;
   alt_text: string;
   is_primary: boolean;
   uploaded_at: string;
@@ -46,15 +52,17 @@ export interface DjangoRestaurant {
   primary_cuisine_type: CuisineType;
   all_cuisine_types: CuisineType[];
   cuisine_assignments: CuisineAssignment[];
+  rating: string; // String format from API
   average_rating: number;
   rating_count: number;
   price_range: "BUDGET" | "MODERATE" | "EXPENSIVE" | "VERY_EXPENSIVE";
   capacity: number;
   features: string[];
   opening_hours: {
-    [key: string]: { open: string; close: string };
+    [key: string]: string; // String format like "11:00-22:00"
   };
-  images: RestaurantImage[];
+  image_urls: string[]; // Array of image URLs for list view
+  images: RestaurantImage[]; // Detailed image objects for detail view
   ratings: RestaurantRating[];
   is_active: boolean;
   created_at: string;
@@ -62,9 +70,9 @@ export interface DjangoRestaurant {
 }
 
 export interface RestaurantFilters {
-  cuisine?: string; // Filter by cuisine type name
+  cuisine_types?: string[]; // Filter by multiple cuisine type slugs
   price_range?: "BUDGET" | "MODERATE" | "EXPENSIVE" | "VERY_EXPENSIVE";
-  features?: string; // Filter by features like "WIFI", "PARKING", etc.
+  features?: string[]; // Filter by multiple features like ["WIFI", "PARKING"]
   search?: string; // Search by name or address
   min_rating?: number; // Minimum rating from 1.0 to 5.0
   page?: number; // Page number for pagination
@@ -83,23 +91,29 @@ export interface AvailabilityResponse {
 // Django Booking API types according to documentation
 export interface DjangoBooking {
   id: string;
-  restaurant:
-    | string
-    | { id: string; name: string; address?: string; phone?: string };
+  restaurant: {
+    id: string;
+    name: string;
+    address: string;
+  };
+  user_name: string;
+  guest_name: string | null;
   booking_date: string;
   booking_time: string;
-  number_of_guests: number; // Updated field name according to docs
+  number_of_guests: number;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
   special_requests?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CreateBookingRequest {
   restaurant: string;
   booking_date: string;
   booking_time: string;
-  number_of_guests: number; // Updated field name
+  number_of_guests: number;
+  guest_name: string;
+  guest_phone: string;
   special_requests?: string;
 }
 
@@ -109,33 +123,20 @@ export interface UpdateBookingRequest {
 }
 
 // Django Bill API types according to documentation
-export interface BillItem {
-  name: string;
-  quantity: number;
-  unit_price: string;
-  total_price: string;
-}
-
 export interface DjangoBill {
   id: string;
-  booking: {
-    id: string;
-    restaurant: {
-      id: string;
-      name: string;
-    };
-    booking_date: string;
-    guests_count: number;
-  };
-  items: BillItem[];
-  subtotal: string;
+  restaurant: string;
+  booking: string;
+  user: string;
+  amount: string;
   tax_amount: string;
   service_charge: string;
   total_amount: string;
   status: "PENDING" | "PAID" | "CANCELLED" | "REFUNDED";
-  payment_method: string;
+  payment_method: "CREDIT_CARD" | "DEBIT_CARD" | "CASH" | "ONLINE";
+  transaction_id: string;
   created_at: string;
-  paid_at?: string;
+  updated_at: string;
 }
 
 // Restaurant rating types
@@ -160,9 +161,15 @@ export const restaurantApi = {
     console.log("🍽️ Getting restaurants with filters:", filters);
 
     const params = new URLSearchParams();
-    if (filters?.cuisine) params.append("cuisine", filters.cuisine);
+    if (filters?.cuisine_types && filters.cuisine_types.length > 0) {
+      filters.cuisine_types.forEach((slug) =>
+        params.append("cuisine_types", slug)
+      );
+    }
     if (filters?.price_range) params.append("price_range", filters.price_range);
-    if (filters?.features) params.append("features", filters.features);
+    if (filters?.features && filters.features.length > 0) {
+      filters.features.forEach((feature) => params.append("features", feature));
+    }
     if (filters?.search) params.append("search", filters.search);
     if (filters?.min_rating)
       params.append("min_rating", filters.min_rating.toString());
@@ -234,9 +241,9 @@ export const restaurantApi = {
     return data;
   },
 
-  // Получение бронирований пользователя
-  getBookings: async (): Promise<PaginatedResponse<DjangoBooking>> => {
-    console.log("📅 Getting user bookings");
+  // Получение бронирований пользователя в новом формате
+  getBookings: async (): Promise<{ results: DjangoBooking[] }> => {
+    console.log("📅 Getting user bookings v2");
     const response = await apiClient.get("/restaurant/bookings/");
     return response.data;
   },
@@ -290,6 +297,13 @@ export const restaurantApi = {
   getCuisineTypes: async (): Promise<PaginatedResponse<CuisineType>> => {
     console.log("🍽️ Getting cuisine types");
     const response = await apiClient.get("/restaurant/cuisine-types/");
+    return response.data;
+  },
+
+  // Получение списка удобств ресторанов
+  getRestaurantFeatures: async (): Promise<RestaurantFeature[]> => {
+    console.log("🏪 Getting restaurant features");
+    const response = await apiClient.get("/restaurant/features/");
     return response.data;
   },
 

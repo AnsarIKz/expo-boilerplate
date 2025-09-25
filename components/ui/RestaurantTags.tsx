@@ -12,15 +12,18 @@ const getAllTags = (restaurant: Restaurant): string[] => {
   const tags: string[] = [];
 
   // Добавляем типы кухни
-  tags.push(...restaurant.cuisine);
+  if (restaurant.cuisine && restaurant.cuisine.length > 0) {
+    tags.push(...restaurant.cuisine);
+  }
 
-  // Добавляем особенности ресторана с более красивыми названиями
-  if (restaurant.features.hasVeganOptions) tags.push("Vegan options");
-  if (restaurant.features.hasChildMenu) tags.push("Kids' menu");
-  if (restaurant.features.hasParking) tags.push("Parking");
-  if (restaurant.features.hasWifi) tags.push("WiFi");
-  if (restaurant.features.hasAlcohol) tags.push("Bar");
-  if (restaurant.features.acceptsCards) tags.push("Cards");
+  // Добавляем особенности ресторана (теперь это массив строк)
+  if (restaurant.features && restaurant.features.length > 0) {
+    tags.push(...restaurant.features);
+  }
+
+  console.log("🏷️ Restaurant tags for", restaurant.name, ":", tags);
+  console.log("🏷️ Cuisine:", restaurant.cuisine);
+  console.log("🏷️ Features:", restaurant.features);
 
   return tags;
 };

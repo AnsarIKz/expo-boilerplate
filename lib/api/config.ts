@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/stores/authStore";
 import axios from "axios";
 
 // Flag to prevent multiple concurrent refresh attempts
@@ -9,7 +8,7 @@ let failedRequestsQueue: any[] = [];
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   "https://api-production-4ce8.up.railway.app"; // Django API URL
-export const API_PREFIX = "/api"; // API prefix according to documentation
+export const API_PREFIX = "/api"; // API prefix
 
 // Debug logging
 console.log("🔧 API Configuration Debug:");
@@ -25,6 +24,37 @@ export const apiClient = axios.create({
   },
 });
 
+// Function to set auth tokens for the API client
+export const setAuthTokens = (
+  accessToken: string | null,
+  deviceToken: string | null,
+  refreshToken?: string | null
+) => {
+  // Store tokens for use in interceptors
+  (apiClient as any)._accessToken = accessToken;
+  (apiClient as any)._deviceToken = deviceToken;
+  if (refreshToken !== undefined) {
+    (apiClient as any)._refreshToken = refreshToken;
+  }
+};
+
+// Callback functions for token management
+let onTokenRefresh:
+  | ((tokens: { accessToken: string; refreshToken: string }) => void)
+  | null = null;
+let onLogout: (() => void) | null = null;
+
+export const setTokenCallbacks = (
+  refreshCallback: (tokens: {
+    accessToken: string;
+    refreshToken: string;
+  }) => void,
+  logoutCallback: () => void
+) => {
+  onTokenRefresh = refreshCallback;
+  onLogout = logoutCallback;
+};
+
 // Request interceptor to add auth token and logging
 apiClient.interceptors.request.use(
   (config) => {
@@ -39,10 +69,17 @@ apiClient.interceptors.request.use(
       timeout: config.timeout,
     });
 
-    const token = useAuthStore.getState().accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const accessToken = (apiClient as any)._accessToken;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
       console.log("🔑 Added Authorization token");
+    } else {
+      // If no auth token, try to use device token
+      const deviceToken = (apiClient as any)._deviceToken;
+      if (deviceToken) {
+        config.headers["X-Device-Token"] = deviceToken;
+        console.log("📱 Added Device Token");
+      }
     }
     return config;
   },
@@ -127,8 +164,8 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      const authStore = useAuthStore.getState();
-      const refreshToken = authStore.refreshToken;
+      // Get refresh token from stored tokens
+      const refreshToken = (apiClient as any)._refreshToken;
 
       if (refreshToken) {
         // If already refreshing, queue this request
@@ -154,11 +191,17 @@ apiClient.interceptors.response.use(
 
           const newTokens = response.data.data;
 
-          // Update tokens in store
-          authStore.updateTokens({
-            accessToken: newTokens.access_token,
-            refreshToken: newTokens.refresh_token,
-          });
+          // Update tokens using callback
+          if (onTokenRefresh) {
+            onTokenRefresh({
+              accessToken: newTokens.access_token,
+              refreshToken: newTokens.refresh_token,
+            });
+          }
+
+          // Update stored tokens
+          (apiClient as any)._accessToken = newTokens.access_token;
+          (apiClient as any)._refreshToken = newTokens.refresh_token;
 
           // Update the original request with new token
           originalRequest.headers.Authorization = `Bearer ${newTokens.access_token}`;
@@ -186,14 +229,18 @@ apiClient.interceptors.response.use(
           });
           failedRequestsQueue = [];
 
-          authStore.logout();
+          if (onLogout) {
+            onLogout();
+          }
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
       } else {
         console.log("🔓 No refresh token available - Auto logout");
-        authStore.logout();
+        if (onLogout) {
+          onLogout();
+        }
       }
     }
 
@@ -205,8 +252,9 @@ apiClient.interceptors.response.use(
       isRefreshing = false;
       failedRequestsQueue = [];
 
-      const authStore = useAuthStore.getState();
-      authStore.logout();
+      if (onLogout) {
+        onLogout();
+      }
     }
 
     return Promise.reject(error);

@@ -57,3 +57,8 @@ async function testRegistrationFormat() {
 }
 
 testRegistrationFormat().catch(console.error);
+
+
+
+
+

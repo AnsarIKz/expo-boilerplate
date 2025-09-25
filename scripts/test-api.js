@@ -7,14 +7,14 @@ const axios = require("axios");
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://api-production-4ce8.up.railway.app/api";
+  "https://api-production-4ce8.up.railway.app";
 
 // Тестирование health endpoint
 async function testHealthEndpoint() {
   console.log("🌐 Testing API health endpoint...");
 
   try {
-    const response = await axios.get(`${API_BASE_URL}/health/`, {
+    const response = await axios.get(`${API_BASE_URL}/api/health/`, {
       timeout: 10000,
     });
 

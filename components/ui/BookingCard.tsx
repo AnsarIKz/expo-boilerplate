@@ -39,12 +39,14 @@ export function BookingCard({
   // Цвет статуса
   const getStatusColor = (status: Booking["status"]) => {
     switch (status) {
-      case "confirmed":
+      case "CONFIRMED":
         return Colors.success.main;
-      case "pending":
+      case "PENDING":
         return Colors.warning.main;
-      case "cancelled":
+      case "CANCELLED":
         return Colors.neutral[400];
+      case "COMPLETED":
+        return Colors.success.main;
       default:
         return Colors.neutral[500];
     }
@@ -52,6 +54,7 @@ export function BookingCard({
 
   const restaurantImage =
     restaurant?.image ||
+    booking.restaurant?.image_urls?.[0] ||
     "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop";
 
   return (
@@ -87,16 +90,16 @@ export function BookingCard({
               className="text-text-primary font-semibold"
               numberOfLines={1}
             >
-              {booking.restaurantName}
+              {booking.restaurant?.name || booking.restaurantName}
             </Typography>
-            {restaurant?.location?.address && (
+            {(booking.restaurant?.address || restaurant?.location?.address) && (
               <Typography
                 variant="body2"
                 color="secondary"
                 numberOfLines={1}
                 className="mt-1"
               >
-                {restaurant.location.address}
+                {booking.restaurant?.address || restaurant?.location?.address}
               </Typography>
             )}
           </View>
@@ -114,7 +117,7 @@ export function BookingCard({
                 variant="body2"
                 className="text-text-primary ml-1 font-medium"
               >
-                {formatDate(booking.date)}
+                {formatDate(booking.booking_date || booking.date || "")}
               </Typography>
             </View>
 
@@ -129,7 +132,7 @@ export function BookingCard({
                 variant="body2"
                 className="text-text-primary ml-1 font-medium"
               >
-                {booking.time}
+                {booking.booking_time?.substring(0, 5) || booking.time}
               </Typography>
             </View>
 
@@ -144,7 +147,7 @@ export function BookingCard({
                 variant="body2"
                 className="text-text-primary ml-1 font-medium"
               >
-                {booking.guests}
+                {booking.number_of_guests || booking.guests}
               </Typography>
             </View>
           </View>

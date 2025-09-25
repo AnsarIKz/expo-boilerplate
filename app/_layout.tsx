@@ -13,8 +13,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import "../global.css";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { initializeApiClient } from "@/lib/api/init";
+import { errorHandler } from "@/lib/errorHandler";
+
 import { OfflineIndicator } from "@/components/ui/Toast";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { useDeviceToken } from "@/hooks/useDeviceToken";
 import { CityProvider } from "@/providers/CityProvider";
 import { FiltersProvider } from "@/providers/FiltersProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -25,6 +30,20 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // Initialize device token for anonymous users
+  useDeviceToken();
+
+  // Initialize API client
+  useEffect(() => {
+    const cleanup = initializeApiClient();
+    return cleanup;
+  }, []);
+
+  // Initialize error handler
+  useEffect(() => {
+    errorHandler.init();
+  }, []);
 
   // Load fonts asynchronously
   const [fontsLoaded, fontError] = useFonts({
@@ -50,60 +69,62 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryProvider>
-        <CityProvider>
-          <FiltersProvider>
-            <ToastProvider>
-              <ThemeProvider
-                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-              >
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    animation: "slide_from_right",
-                  }}
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryProvider>
+          <CityProvider>
+            <FiltersProvider>
+              <ToastProvider>
+                <ThemeProvider
+                  value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{
+                  <Stack
+                    screenOptions={{
                       headerShown: false,
-                      gestureEnabled: false,
+                      animation: "slide_from_right",
                     }}
-                  />
-                  <Stack.Screen
-                    name="+not-found"
-                    options={{
-                      title: "Страница не найдена",
-                      presentation: "modal",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="city-selector"
-                    options={{
-                      presentation: "modal",
-                      headerShown: false,
-                      gestureEnabled: true,
-                      animation: "slide_from_bottom",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="filters"
-                    options={{
-                      presentation: "modal",
-                      headerShown: false,
-                      gestureEnabled: true,
-                      animation: "slide_from_bottom",
-                    }}
-                  />
-                </Stack>
-                <StatusBar style="dark" />
-                <OfflineIndicator />
-              </ThemeProvider>
-            </ToastProvider>
-          </FiltersProvider>
-        </CityProvider>
-      </QueryProvider>
-    </GestureHandlerRootView>
+                  >
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{
+                        headerShown: false,
+                        gestureEnabled: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="+not-found"
+                      options={{
+                        title: "Страница не найдена",
+                        presentation: "modal",
+                      }}
+                    />
+                    <Stack.Screen
+                      name="city-selector"
+                      options={{
+                        presentation: "modal",
+                        headerShown: false,
+                        gestureEnabled: true,
+                        animation: "slide_from_bottom",
+                      }}
+                    />
+                    <Stack.Screen
+                      name="filters"
+                      options={{
+                        presentation: "modal",
+                        headerShown: false,
+                        gestureEnabled: true,
+                        animation: "slide_from_bottom",
+                      }}
+                    />
+                  </Stack>
+                  <StatusBar style="dark" />
+                  <OfflineIndicator />
+                </ThemeProvider>
+              </ToastProvider>
+            </FiltersProvider>
+          </CityProvider>
+        </QueryProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

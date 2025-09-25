@@ -2,9 +2,11 @@ import { Restaurant } from "@/entities/Restaurant";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useCallback, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { Colors } from "../tokens";
 import { Card } from "./Card";
+import { ImageSkeleton } from "./ImageSkeleton";
 import { Typography } from "./Typography";
 
 interface RestaurantCardProps {
@@ -12,50 +14,44 @@ interface RestaurantCardProps {
   onPress: (restaurantId: string) => void;
 }
 
-// Функция для форматирования цены в стиле $$
-const formatPriceLevel = (price: {
-  min: number;
-  max: number;
-  currency: string;
-}): string => {
-  if (price.currency === "KZT") {
-    const avgPrice = (price.min + price.max) / 2;
-    if (avgPrice < 3000) return "$";
-    if (avgPrice < 6000) return "$$";
-    if (avgPrice < 10000) return "$$$";
-    return "$$$$";
+// Функция для форматирования цены в стиле $$ на основе priceRange
+const formatPriceLevel = (priceRange: "low" | "medium" | "high"): string => {
+  switch (priceRange) {
+    case "low":
+      return "$";
+    case "medium":
+      return "$$";
+    case "high":
+      return "$$$";
+    default:
+      return "$$";
   }
-  // For other currencies, use simple logic
-  const avgPrice = (price.min + price.max) / 2;
-  if (avgPrice < 15) return "$";
-  if (avgPrice < 30) return "$$";
-  if (avgPrice < 50) return "$$$";
-  return "$$$$";
 };
 
-// Функция для получения всех тегов (кухня + особенности)
+// Функция для получения всех тегов из реальных данных
 const getAllTags = (restaurant: Restaurant): string[] => {
   const tags: string[] = [];
 
-  // Добавляем типы кухни
-  tags.push(...restaurant.cuisine);
+  // Добавляем типы кухни из реальных данных
+  if (restaurant.cuisine && restaurant.cuisine.length > 0) {
+    tags.push(...restaurant.cuisine);
+  }
 
-  // Добавляем особенности ресторана
-  if (restaurant.features.hasDelivery) tags.push("Delivery");
-  if (restaurant.features.hasReservation) tags.push("Reservation");
-  if (restaurant.features.hasVeganOptions) tags.push("Vegan options");
-  if (restaurant.features.hasChildMenu) tags.push("Kid's menu");
-  if (restaurant.features.hasParking) tags.push("Parking");
-  if (restaurant.features.hasWifi) tags.push("WiFi");
-  if (restaurant.features.hasAlcohol) tags.push("Alcohol");
-  if (restaurant.features.acceptsCards) tags.push("Cards accepted");
+  // Добавляем features (особенности ресторана)
+  if (restaurant.features && restaurant.features.length > 0) {
+    console.log("🏪 Restaurant features:", restaurant.features);
+    tags.push(...restaurant.features);
+  }
 
+  console.log("🏪 All tags for", restaurant.name, ":", tags);
   return tags;
 };
 
 export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
-  const priceLevel = formatPriceLevel(restaurant.features.averagePrice);
+  const priceLevel = formatPriceLevel(restaurant.priceRange || "medium");
   const allTags = getAllTags(restaurant);
+  const [isPressed, setIsPressed] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Хук для работы с избранным
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -66,20 +62,35 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
     toggleFavorite(restaurant);
   };
 
+  const handleCardPress = useCallback(() => {
+    if (isPressed) return; // Предотвращаем множественные нажатия
+
+    setIsPressed(true);
+    onPress(restaurant.id);
+
+    // Сбрасываем флаг через небольшую задержку
+    setTimeout(() => setIsPressed(false), 1000);
+  }, [isPressed, onPress, restaurant.id]);
+
   return (
     <Card
       variant="elevated"
       padding="none"
-      onPress={() => onPress(restaurant.id)}
+      onPress={handleCardPress}
       className="mx-6 mb-6 overflow-hidden rounded-2xl"
     >
       {/* Image Container */}
       <View className="relative h-[240px]">
+        {imageLoading && (
+          <ImageSkeleton width="100%" height={240} borderRadius={0} />
+        )}
         <Image
           source={{ uri: restaurant.image }}
           className="w-full h-full"
           contentFit="cover"
-          placeholder="https://placehold.co/362x240/f0f0f0/cccccc?text=Загрузка..."
+          onLoadStart={() => setImageLoading(true)}
+          onLoadEnd={() => setImageLoading(false)}
+          onError={() => setImageLoading(false)}
           transition={200}
         />
 
@@ -106,7 +117,7 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
             color="inverse"
             className="ml-1.5 text-sm"
           >
-            {restaurant.rating} ({restaurant.reviewCount})
+            {restaurant.rating.toFixed(1)} ({restaurant.reviewCount})
           </Typography>
         </View>
       </View>
@@ -128,31 +139,33 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
         </View>
 
         {/* All Tags in one row */}
-        <View className="flex-row flex-wrap gap-2">
-          {allTags.slice(0, 5).map((tag, index) => (
-            <View
-              key={`${tag}-${index}`}
-              className="bg-primary-200 px-3 py-1.5 rounded-full"
-            >
-              <Typography
-                variant="caption"
-                className="text-primary-700 text-xs"
+        {allTags.length > 0 && (
+          <View className="flex-row flex-wrap gap-2">
+            {allTags.slice(0, 5).map((tag, index) => (
+              <View
+                key={`${tag}-${index}`}
+                className="bg-primary-200 px-3 py-1.5 rounded-full"
               >
-                {tag}
-              </Typography>
-            </View>
-          ))}
-          {allTags.length > 5 && (
-            <View className="bg-primary-200 px-3 py-1.5 rounded-full">
-              <Typography
-                variant="caption"
-                className="text-primary-700 text-xs"
-              >
-                +{allTags.length - 5} more
-              </Typography>
-            </View>
-          )}
-        </View>
+                <Typography
+                  variant="caption"
+                  className="text-primary-700 text-xs"
+                >
+                  {tag}
+                </Typography>
+              </View>
+            ))}
+            {allTags.length > 5 && (
+              <View className="bg-primary-200 px-3 py-1.5 rounded-full">
+                <Typography
+                  variant="caption"
+                  className="text-primary-700 text-xs"
+                >
+                  +{allTags.length - 5} more
+                </Typography>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </Card>
   );

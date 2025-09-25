@@ -1,12 +1,10 @@
 import { restaurantApi } from "@/lib/api/restaurant";
-import {
-  adaptBookingRequestToDjango,
-  adaptDjangoBookingToBooking,
-} from "@/lib/api/restaurantAdapters";
+import { adaptDjangoBookingToBooking } from "@/lib/api/restaurantAdapters";
+import { useDeviceTokenStore } from "@/stores/deviceTokenStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { Booking, BookingRequest } from "../types/booking";
+import { Booking } from "../types/booking";
 
 interface BookingStore {
   bookings: Booking[];
@@ -14,7 +12,6 @@ interface BookingStore {
   error: string | null;
 
   // Actions
-  addBooking: (bookingRequest: BookingRequest) => Promise<Booking>;
   loadBookings: () => Promise<void>;
   getBookings: () => Booking[];
   getBookingById: (id: string) => Booking | undefined;
@@ -22,39 +19,18 @@ interface BookingStore {
   clearBookings: () => void;
 }
 
-// Real API function using Django backend
-const createBookingAPI = async (request: BookingRequest): Promise<Booking> => {
-  console.log("📅 Creating booking via Django API:", request);
-
-  try {
-    // Адаптируем наш запрос в формат Django API
-    const djangoRequest = adaptBookingRequestToDjango(
-      request.restaurantId,
-      request.date,
-      request.time,
-      request.guests,
-      request.comment
-    );
-
-    // Вызываем Django API
-    const response = await restaurantApi.createBooking(djangoRequest);
-
-    // Адаптируем ответ Django в наш формат
-    const booking = adaptDjangoBookingToBooking(response);
-
-    console.log("✅ Booking created successfully:", booking);
-    return booking;
-  } catch (error) {
-    console.error("❌ Booking creation failed:", error);
-    throw error;
-  }
-};
-
 // Загрузка бронирований пользователя через Django API
 const loadBookingsAPI = async (): Promise<Booking[]> => {
   console.log("📅 Loading bookings via Django API");
 
   try {
+    // Ensure device token is registered before loading bookings
+    const deviceTokenStore = useDeviceTokenStore.getState();
+    if (!deviceTokenStore.deviceToken) {
+      console.log("📱 Device not registered, registering now...");
+      await deviceTokenStore.registerDevice();
+    }
+
     const response = await restaurantApi.getBookings();
     const bookings = response.results.map(adaptDjangoBookingToBooking);
 
@@ -71,24 +47,19 @@ const cancelBookingAPI = async (id: string): Promise<void> => {
   console.log("📅 Cancelling booking via Django API:", id);
 
   try {
+    // Ensure device token is registered before cancelling booking
+    const deviceTokenStore = useDeviceTokenStore.getState();
+    if (!deviceTokenStore.deviceToken) {
+      console.log("📱 Device not registered, registering now...");
+      await deviceTokenStore.registerDevice();
+    }
+
     await restaurantApi.cancelBooking(id);
     console.log("✅ Booking cancelled successfully");
   } catch (error) {
     console.error("❌ Failed to cancel booking:", error);
     throw error;
   }
-};
-
-// Get restaurant name by ID (fallback for compatibility)
-const getRestaurantName = (restaurantId: string): string => {
-  const restaurantNames: Record<string, string> = {
-    "1": "Del Papa",
-    "2": "Mama Mia",
-    "3": "Хачапури & Вино",
-    "4": "Детский Мир",
-  };
-
-  return restaurantNames[restaurantId] || "Unknown Restaurant";
 };
 
 export const useBookingStore = create<BookingStore>()(
@@ -98,27 +69,6 @@ export const useBookingStore = create<BookingStore>()(
       isLoading: false,
       error: null,
 
-      addBooking: async (bookingRequest: BookingRequest) => {
-        set({ isLoading: true, error: null });
-
-        try {
-          const booking = await createBookingAPI(bookingRequest);
-
-          set((state) => ({
-            bookings: [booking, ...state.bookings],
-            isLoading: false,
-          }));
-
-          return booking;
-        } catch (error) {
-          set({
-            isLoading: false,
-            error: error instanceof Error ? error.message : "Booking failed",
-          });
-          throw error;
-        }
-      },
-
       loadBookings: async () => {
         set({ isLoading: true, error: null });
 
@@ -126,6 +76,7 @@ export const useBookingStore = create<BookingStore>()(
           const bookings = await loadBookingsAPI();
           set({ bookings, isLoading: false });
         } catch (error) {
+          console.error("❌ BookingStore - Error loading bookings:", error);
           set({
             isLoading: false,
             error:
@@ -155,7 +106,7 @@ export const useBookingStore = create<BookingStore>()(
               booking.id === id
                 ? {
                     ...booking,
-                    status: "cancelled",
+                    status: "CANCELLED",
                     updatedAt: new Date().toISOString(),
                   }
                 : booking

@@ -136,6 +136,8 @@ export const useCreateBooking = () => {
       date: string;
       time: string;
       guests: number;
+      customerName: string;
+      customerPhone: string;
       comment?: string;
     }) => {
       const djangoRequest = adaptBookingRequestToDjango(
@@ -143,6 +145,8 @@ export const useCreateBooking = () => {
         data.date,
         data.time,
         data.guests,
+        data.customerName,
+        data.customerPhone,
         data.comment
       );
       const response = await restaurantApi.createBooking(djangoRequest);
@@ -151,7 +155,10 @@ export const useCreateBooking = () => {
     onSuccess: (booking) => {
       showSuccess(
         "Бронирование создано",
-        `Ваше бронирование на ${booking.time} подтверждено`
+        `Ваше бронирование на ${booking.booking_time.substring(
+          0,
+          5
+        )} подтверждено`
       );
 
       // Инвалидируем запросы для обновления данных
@@ -243,8 +250,34 @@ export const useBillApi = (id: string) => {
 export const useCuisineTypes = () => {
   return useQuery({
     queryKey: ["cuisine-types"],
-    queryFn: () => restaurantApi.getCuisineTypes(),
+    queryFn: async () => {
+      const response = await restaurantApi.getCuisineTypes();
+      // Преобразуем в формат для фильтров
+      return response.results.map((cuisine) => ({
+        id: cuisine.slug,
+        label: cuisine.name,
+        isSelected: false,
+      }));
+    },
     staleTime: 30 * 60 * 1000, // 30 минут - типы кухонь редко меняются
+    gcTime: 60 * 60 * 1000, // 1 час
+  });
+};
+
+// Хук для получения удобств ресторанов
+export const useRestaurantFeatures = () => {
+  return useQuery({
+    queryKey: ["restaurant-features"],
+    queryFn: async () => {
+      const response = await restaurantApi.getRestaurantFeatures();
+      // Преобразуем в формат для фильтров
+      return response.map((feature) => ({
+        id: feature.value,
+        label: feature.label,
+        isSelected: false,
+      }));
+    },
+    staleTime: 30 * 60 * 1000, // 30 минут - удобства редко меняются
     gcTime: 60 * 60 * 1000, // 1 час
   });
 };

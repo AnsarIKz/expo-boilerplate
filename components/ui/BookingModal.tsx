@@ -54,11 +54,11 @@ export function BookingDetailsModal({
   // Цвет и текст статуса
   const getStatusInfo = (status: Booking["status"]) => {
     switch (status) {
-      case "confirmed":
+      case "CONFIRMED":
         return { color: Colors.success.main, text: "Подтверждено" };
-      case "pending":
+      case "PENDING":
         return { color: Colors.warning.main, text: "Ожидает подтверждения" };
-      case "cancelled":
+      case "CANCELLED":
         return { color: Colors.neutral[400], text: "Отменено" };
       default:
         return { color: Colors.neutral[500], text: "Неизвестно" };
@@ -67,7 +67,7 @@ export function BookingDetailsModal({
 
   const handleClose = () => {
     // Если была выставлена оценка, отправляем её и показываем тост
-    if (rating > 0 && booking.status === "confirmed") {
+    if (rating > 0 && booking.status === "CONFIRMED") {
       onRate?.(booking, rating);
       setShowToast(true);
       setTimeout(() => {
@@ -103,40 +103,6 @@ export function BookingDetailsModal({
   const restaurantImage =
     restaurant?.image ||
     "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop";
-
-  // Проверка статуса оплаты и времени
-  const isEventNow = () => {
-    if (!booking) return false;
-    const now = new Date();
-    const bookingDate = new Date(booking.date);
-    const [hours, minutes] = booking.time.split(":").map(Number);
-    bookingDate.setHours(hours, minutes);
-
-    // Событие проходит в течение 2 часов после назначенного времени
-    const eventEnd = new Date(bookingDate.getTime() + 2 * 60 * 60 * 1000);
-    return now >= bookingDate && now <= eventEnd;
-  };
-
-  const shouldShowPayment = () => {
-    if (!booking || booking.status === "cancelled") return false;
-    // Показываем кнопку оплаты если не оплачено и событие еще не прошло
-    const now = new Date();
-    const bookingDate = new Date(booking.date);
-    const [hours, minutes] = booking.time.split(":").map(Number);
-    bookingDate.setHours(hours, minutes);
-
-    return !booking.isPaid && now < bookingDate;
-  };
-
-  const handleSavePhone = () => {
-    // Здесь можно добавить логику сохранения номера телефона
-    setIsEditingPhone(false);
-  };
-
-  const handlePayment = () => {
-    // Логика оплаты
-    Alert.alert("Оплата", "Переход к оплате...");
-  };
 
   return (
     <Modal
@@ -185,27 +151,25 @@ export function BookingDetailsModal({
               variant="h4"
               className="text-text-primary font-bold mb-3"
             >
-              {booking.restaurantName}
+              {booking.restaurant.name}
             </Typography>
 
             {/* Дата и время */}
             <View className="flex-row items-center justify-between mb-2">
               <Typography variant="body2" color="secondary" className="text-xs">
-                {formatFullDate(booking.date)}
+                {formatFullDate(booking.booking_date)}
               </Typography>
               <Typography
                 variant="h6"
                 className="text-text-primary font-semibold"
               >
-                {booking.time}
+                {booking.booking_time.substring(0, 5)}
               </Typography>
             </View>
 
-            {restaurant?.location?.address && (
-              <Typography variant="body1" color="secondary" className="mb-2">
-                {restaurant.location.address}
-              </Typography>
-            )}
+            <Typography variant="body1" color="secondary" className="mb-2">
+              {booking.restaurant.address}
+            </Typography>
           </View>
 
           {/* Информация о бронировании - упрощенная */}
@@ -219,9 +183,24 @@ export function BookingDetailsModal({
               variant="body1"
               className="text-text-primary font-medium"
             >
-              {booking.customerName}
+              {booking.user_name}
             </Typography>
           </View>
+
+          {/* Имя гостя (если отличается от пользователя) */}
+          {booking.guest_name && booking.guest_name !== booking.user_name && (
+            <View className="mb-3">
+              <Typography variant="caption" color="secondary" className="mb-1">
+                Имя гостя
+              </Typography>
+              <Typography
+                variant="body1"
+                className="text-text-primary font-medium"
+              >
+                {booking.guest_name}
+              </Typography>
+            </View>
+          )}
 
           {/* Количество гостей */}
           <View className="mb-3">
@@ -232,7 +211,8 @@ export function BookingDetailsModal({
               variant="body1"
               className="text-text-primary font-medium"
             >
-              {booking.guests} {booking.guests === 1 ? "гость" : "гостей"}
+              {booking.number_of_guests}{" "}
+              {booking.number_of_guests === 1 ? "гость" : "гостей"}
             </Typography>
 
             {/* Телефон с возможностью редактирования */}
@@ -287,105 +267,8 @@ export function BookingDetailsModal({
             )}
           </View>
 
-          {/* Фискальный чек - стиль чека */}
-          <View className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4 mb-6">
-            <View className="border-b border-gray-200 pb-3 mb-3">
-              <Typography
-                variant="h6"
-                className="text-center text-text-primary font-bold"
-              >
-                ФИСКАЛЬНЫЙ ЧЕК
-              </Typography>
-              <Typography
-                variant="caption"
-                className="text-center text-gray-500"
-              >
-                {booking.restaurantName}
-              </Typography>
-            </View>
-
-            <View className="space-y-2 mb-4">
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Бронирование стола
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  1 × 500₽
-                </Typography>
-              </View>
-              <View className="flex-row justify-between">
-                <Typography variant="body2" color="secondary">
-                  Гости: {booking.guests}
-                </Typography>
-                <Typography variant="body2" className="text-text-primary">
-                  {booking.guests} × 200₽
-                </Typography>
-              </View>
-              <View className="border-t border-gray-200 pt-2 flex-row justify-between">
-                <Typography
-                  variant="body1"
-                  className="text-text-primary font-semibold"
-                >
-                  Итого:
-                </Typography>
-                <Typography
-                  variant="body1"
-                  className="text-text-primary font-bold"
-                >
-                  {500 + booking.guests * 200}₽
-                </Typography>
-              </View>
-            </View>
-
-            {/* Статус оплаты */}
-            <View className="flex-row items-center justify-center mb-3">
-              {booking.isPaid ? (
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color={Colors.success.main}
-                  />
-                  <Typography
-                    variant="body2"
-                    className="ml-2 text-success-main font-medium"
-                  >
-                    Оплачено
-                  </Typography>
-                </View>
-              ) : (
-                <View className="flex-row items-center">
-                  <Ionicons name="time" size={20} color={Colors.warning.main} />
-                  <Typography
-                    variant="body2"
-                    className="ml-2 text-warning-main font-medium"
-                  >
-                    Ожидает оплаты
-                  </Typography>
-                </View>
-              )}
-            </View>
-
-            {/* Кнопка оплаты */}
-            {shouldShowPayment() && (
-              <Button
-                variant="primary"
-                size="lg"
-                onPress={handlePayment}
-                className="bg-success-main"
-              >
-                <Typography
-                  variant="subtitle1"
-                  className="text-white font-semibold"
-                >
-                  Оплатить {500 + booking.guests * 200}₽
-                </Typography>
-              </Button>
-            )}
-          </View>
-
           {/* Оценка заведения */}
-          {booking.status === "confirmed" && (
+          {booking.status === "CONFIRMED" && (
             <View className="mb-6">
               {/* Звезды */}
               <View className="flex-row items-center justify-center py-4">
@@ -407,18 +290,19 @@ export function BookingDetailsModal({
           )}
 
           {/* Кнопка отмены */}
-          {booking.status === "confirmed" && onCancel && (
-            <Button
-              variant="outline"
-              size="lg"
-              onPress={handleCancelBooking}
-              className="border-error-main mb-4"
-            >
-              <Typography variant="subtitle1" className="text-error-main">
-                Отменить бронирование
-              </Typography>
-            </Button>
-          )}
+          {booking.status === "CONFIRMED" ||
+            (booking.status === "PENDING" && onCancel && (
+              <Button
+                variant="outline"
+                size="lg"
+                onPress={handleCancelBooking}
+                className="border-error-main mb-4"
+              >
+                <Typography variant="subtitle1" className="text-error-main">
+                  Отменить бронирование
+                </Typography>
+              </Button>
+            ))}
         </ScrollView>
       </View>
       {showToast && (
@@ -433,3 +317,107 @@ export function BookingDetailsModal({
     </Modal>
   );
 }
+
+const PaymentButton = ({ booking }: { booking: Booking }) => {
+  const shouldShowPayment = () => {
+    if (!booking || booking.status === "CANCELLED") return false;
+    // Показываем кнопку оплаты если не оплачено и событие еще не прошло
+    const now = new Date();
+    const bookingDate = new Date(booking.booking_date);
+    const [hours, minutes] = booking.booking_time.split(":").map(Number);
+    bookingDate.setHours(hours, minutes);
+
+    return !booking.isPaid && now < bookingDate;
+  };
+
+  const handlePayment = () => {
+    // Логика оплаты
+  };
+  return (
+    <>
+      {/* Фискальный чек - стиль чека */}
+      <View className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4 mb-6">
+        <View className="border-b border-gray-200 pb-3 mb-3">
+          <Typography
+            variant="h6"
+            className="text-center text-text-primary font-bold"
+          >
+            ФИСКАЛЬНЫЙ ЧЕК
+          </Typography>
+          <Typography variant="caption" className="text-center text-gray-500">
+            {booking.restaurant.name}
+          </Typography>
+        </View>
+        <View className="space-y-2 mb-4">
+          <View className="flex-row justify-between">
+            <Typography variant="body2" color="secondary">
+              Бронирование стола
+            </Typography>
+            <Typography variant="body2" className="text-text-primary">
+              1 × 500₽
+            </Typography>
+          </View>
+          <View className="flex-row justify-between">
+            <Typography variant="body2" color="secondary">
+              Гости: {booking.number_of_guests}
+            </Typography>
+            <Typography variant="body2" className="text-text-primary">
+              {booking.number_of_guests} × 200₽
+            </Typography>
+          </View>
+          <View className="border-t border-gray-200 pt-2 flex-row justify-between">
+            <Typography
+              variant="body1"
+              className="text-text-primary font-semibold"
+            >
+              Итого:
+            </Typography>
+            <Typography variant="body1" className="text-text-primary font-bold">
+              {500 + booking.number_of_guests * 200}₽
+            </Typography>
+          </View>
+        </View>
+        {/* Статус оплаты */}
+        <View className="flex-row items-center justify-center mb-3">
+          {booking.isPaid ? (
+            <View className="flex-row items-center">
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={Colors.success.main}
+              />
+              <Typography
+                variant="body2"
+                className="ml-2 text-success-main font-medium"
+              >
+                Оплачено
+              </Typography>
+            </View>
+          ) : (
+            <View className="flex-row items-center">
+              <Typography
+                variant="body2"
+                className="ml-2 text-warning-main font-medium"
+              >
+                Ожидает оплаты
+              </Typography>
+            </View>
+          )}
+        </View>
+        Кнопка оплаты
+        {shouldShowPayment() && (
+          <Button
+            variant="primary"
+            size="lg"
+            onPress={handlePayment}
+            className="bg-success-main"
+          >
+            <Typography variant="subtitle1" color="inverse">
+              Оплатить
+            </Typography>
+          </Button>
+        )}
+      </View>
+    </>
+  );
+};

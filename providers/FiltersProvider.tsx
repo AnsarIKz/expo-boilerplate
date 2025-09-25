@@ -1,8 +1,13 @@
 import {
+  useCuisineTypes,
+  useRestaurantFeatures,
+} from "@/hooks/api/useRestaurantsApi";
+import {
   createContext,
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from "react";
 
@@ -34,40 +39,31 @@ interface FiltersContextType {
   hasActiveFilters: () => boolean;
 }
 
+// Fallback данные для демонстрации (если API недоступен)
+const FALLBACK_CUISINES = [
+  { id: "italian", label: "Italian", isSelected: false },
+  { id: "chinese", label: "Chinese", isSelected: false },
+  { id: "japanese", label: "Japanese", isSelected: false },
+  { id: "mexican", label: "Mexican", isSelected: false },
+];
+
+const FALLBACK_FEATURES = [
+  { id: "WIFI", label: "Wi-Fi", isSelected: false },
+  { id: "PARKING", label: "Parking", isSelected: false },
+  { id: "DELIVERY", label: "Delivery", isSelected: false },
+  { id: "TAKEOUT", label: "Takeout", isSelected: false },
+  { id: "OUTDOOR_SEATING", label: "Outdoor Seating", isSelected: false },
+];
+
 // Начальное состояние фильтров
 const INITIAL_FILTERS: FiltersState = {
   priceRange: {
     min: 1000,
     max: 15000,
   },
-  cuisines: [
-    { id: "italian", label: "Итальянская кухня", isSelected: false },
-    { id: "georgian", label: "Грузинская кухня", isSelected: false },
-    { id: "kazakh", label: "Казахская кухня", isSelected: false },
-    { id: "asian", label: "Азиатская кухня", isSelected: false },
-    { id: "european", label: "Европейская кухня", isSelected: false },
-    { id: "american", label: "Американская кухня", isSelected: false },
-  ],
-  features: [
-    { id: "delivery", label: "Доставка", isSelected: false },
-    { id: "reservation", label: "Бронирование", isSelected: false },
-    { id: "wifi", label: "Wi-Fi", isSelected: false },
-    { id: "parking", label: "Парковка", isSelected: false },
-    { id: "child_menu", label: "Детское меню", isSelected: false },
-    { id: "vegan", label: "Веганские блюда", isSelected: false },
-    { id: "alcohol", label: "Алкоголь", isSelected: false },
-    { id: "cards", label: "Карты", isSelected: false },
-  ],
-  tags: [
-    { id: "pizza", label: "Пицца", isSelected: false },
-    { id: "pasta", label: "Паста", isSelected: false },
-    { id: "khachapuri", label: "Хачапури", isSelected: false },
-    { id: "khinkali", label: "Хинкали", isSelected: false },
-    { id: "fast_delivery", label: "Быстрая доставка", isSelected: false },
-    { id: "healthy", label: "Здоровая еда", isSelected: false },
-    { id: "romantic", label: "Романтическая атмосфера", isSelected: false },
-    { id: "family", label: "Семейный ресторан", isSelected: false },
-  ],
+  cuisines: FALLBACK_CUISINES, // Используем fallback данные
+  features: FALLBACK_FEATURES, // Используем fallback данные
+  tags: [],
 };
 
 const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
@@ -78,6 +74,32 @@ interface FiltersProviderProps {
 
 export function FiltersProvider({ children }: FiltersProviderProps) {
   const [filters, setFilters] = useState<FiltersState>(INITIAL_FILTERS);
+  const { data: cuisineTypes, isLoading: isLoadingCuisines } =
+    useCuisineTypes();
+  const { data: restaurantFeatures, isLoading: isLoadingFeatures } =
+    useRestaurantFeatures();
+
+  // Загружаем типы кухонь из API при инициализации
+  useEffect(() => {
+    if (cuisineTypes && cuisineTypes.length > 0) {
+      console.log("🍽️ Loading cuisine types from API:", cuisineTypes.length);
+      setFilters((prev) => ({
+        ...prev,
+        cuisines: cuisineTypes,
+      }));
+    }
+  }, [cuisineTypes]);
+
+  // Загружаем удобства из API при инициализации
+  useEffect(() => {
+    if (restaurantFeatures && restaurantFeatures.length > 0) {
+      console.log("🏪 Loading features from API:", restaurantFeatures.length);
+      setFilters((prev) => ({
+        ...prev,
+        features: restaurantFeatures,
+      }));
+    }
+  }, [restaurantFeatures]);
 
   const updatePriceRange = useCallback((min: number, max: number) => {
     setFilters((prev) => ({

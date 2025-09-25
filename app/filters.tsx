@@ -8,60 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { FilterSection } from "@/components/ui/FilterSection";
 import { PriceRangeSlider } from "@/components/ui/PriceRangeSlider";
 import { Typography } from "@/components/ui/Typography";
+import {
+  useCuisineTypes,
+  useRestaurantFeatures,
+} from "@/hooks/api/useRestaurantsApi";
 import { useFiltersContext } from "@/providers/FiltersProvider";
-
-// Типы фильтров
-interface FilterOption {
-  id: string;
-  label: string;
-  isSelected: boolean;
-}
-
-interface FiltersState {
-  priceRange: {
-    min: number;
-    max: number;
-  };
-  cuisines: FilterOption[];
-  features: FilterOption[];
-  tags: FilterOption[];
-}
-
-// Моковые данные для фильтров
-const INITIAL_FILTERS: FiltersState = {
-  priceRange: {
-    min: 1000,
-    max: 15000,
-  },
-  cuisines: [
-    { id: "italian", label: "Итальянская кухня", isSelected: false },
-    { id: "georgian", label: "Грузинская кухня", isSelected: false },
-    { id: "kazakh", label: "Казахская кухня", isSelected: false },
-    { id: "asian", label: "Азиатская кухня", isSelected: false },
-    { id: "european", label: "Европейская кухня", isSelected: false },
-    { id: "american", label: "Американская кухня", isSelected: false },
-  ],
-  features: [
-    { id: "delivery", label: "Доставка", isSelected: false },
-    { id: "reservation", label: "Бронирование", isSelected: false },
-    { id: "wifi", label: "Wi-Fi", isSelected: false },
-    { id: "parking", label: "Парковка", isSelected: false },
-    { id: "child_menu", label: "Детское меню", isSelected: false },
-    { id: "vegan", label: "Веганские блюда", isSelected: false },
-    { id: "alcohol", label: "Алкоголь", isSelected: false },
-    { id: "cards", label: "Карты", isSelected: false },
-  ],
-  tags: [
-    { id: "pizza", label: "Пицца", isSelected: false },
-    { id: "pasta", label: "Паста", isSelected: false },
-    { id: "khachapuri", label: "Хачапури", isSelected: false },
-    { id: "khinkali", label: "Хинкали", isSelected: false },
-    { id: "fast_delivery", label: "Быстрая доставка", isSelected: false },
-    { id: "healthy", label: "Здоровая еда", isSelected: false },
-    { id: "romantic", label: "Романтическая атмосфера", isSelected: false },
-    { id: "family", label: "Семейный ресторан", isSelected: false },
-  ],
-};
 
 export default function FiltersScreen() {
   const [isSliderActive, setIsSliderActive] = useState(false);
@@ -74,6 +25,10 @@ export default function FiltersScreen() {
     clearAllFilters,
     getActiveFiltersCount,
   } = useFiltersContext();
+
+  // Получаем состояние загрузки для отображения индикаторов
+  const { isLoading: isLoadingCuisines } = useCuisineTypes();
+  const { isLoading: isLoadingFeatures } = useRestaurantFeatures();
 
   const handleApplyFilters = useCallback(() => {
     // Фильтры уже применены через контекст
@@ -150,6 +105,7 @@ export default function FiltersScreen() {
           title="Тип кухни"
           options={filters.cuisines}
           onOptionToggle={toggleCuisine}
+          isLoading={isLoadingCuisines}
         />
 
         {/* Features */}
@@ -157,13 +113,7 @@ export default function FiltersScreen() {
           title="Удобства"
           options={filters.features}
           onOptionToggle={toggleFeature}
-        />
-
-        {/* Tags */}
-        <FilterSection
-          title="Специализация"
-          options={filters.tags}
-          onOptionToggle={toggleTag}
+          isLoading={isLoadingFeatures}
         />
 
         <View className="h-20" />

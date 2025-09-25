@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   NativeScrollEvent,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
+import { ImageSkeleton } from "./ImageSkeleton";
 
 interface ImageCarouselProps {
   images: string[];
@@ -17,7 +18,15 @@ const { width: screenWidth } = Dimensions.get("window");
 
 export function ImageCarousel({ images, height = 300 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageLoading, setImageLoading] = useState<boolean[]>(
+    new Array(images.length).fill(true)
+  );
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Обновляем массив loading состояний при изменении images
+  useEffect(() => {
+    setImageLoading(new Array(images.length).fill(true));
+  }, [images.length]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -34,7 +43,7 @@ export function ImageCarousel({ images, height = 300 }: ImageCarouselProps) {
         className="bg-neutral-100 items-center justify-center"
         style={{ height }}
       >
-        <View className="w-20 h-20 bg-neutral-200 rounded-lg" />
+        <ImageSkeleton width="100%" height={height} borderRadius={0} />
       </View>
     );
   }
@@ -52,14 +61,45 @@ export function ImageCarousel({ images, height = 300 }: ImageCarouselProps) {
         style={{ height }}
       >
         {images.map((image, index) => (
-          <Image
-            key={index}
-            source={{ uri: image }}
-            style={{ width: screenWidth, height }}
-            contentFit="cover"
-            placeholder="https://placehold.co/400x300/f0f0f0/cccccc?text=Загрузка..."
-            transition={200}
-          />
+          <View key={index} style={{ width: screenWidth, height }}>
+            {/* Loading skeleton for this specific image */}
+            {imageLoading[index] && (
+              <ImageSkeleton width="100%" height={height} borderRadius={0} />
+            )}
+
+            <Image
+              source={{ uri: image }}
+              style={{
+                width: screenWidth,
+                height,
+                position: imageLoading[index] ? "absolute" : "relative",
+                opacity: imageLoading[index] ? 0 : 1,
+              }}
+              contentFit="cover"
+              onLoadStart={() => {
+                setImageLoading((prev) => {
+                  const newState = [...prev];
+                  newState[index] = true;
+                  return newState;
+                });
+              }}
+              onLoadEnd={() => {
+                setImageLoading((prev) => {
+                  const newState = [...prev];
+                  newState[index] = false;
+                  return newState;
+                });
+              }}
+              onError={() => {
+                setImageLoading((prev) => {
+                  const newState = [...prev];
+                  newState[index] = false;
+                  return newState;
+                });
+              }}
+              transition={200}
+            />
+          </View>
         ))}
       </ScrollView>
 

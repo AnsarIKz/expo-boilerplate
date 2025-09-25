@@ -6,16 +6,16 @@ import { ParallaxImageCarousel } from "@/components/ui/ParallaxImageCarousel";
 import { RestaurantTags } from "@/components/ui/RestaurantTags";
 import { Typography } from "@/components/ui/Typography";
 import { Restaurant } from "@/entities/Restaurant";
-import { useCreateBooking } from "@/hooks/api/useRestaurantsApi";
+import {
+  useCreateBooking,
+  useRestaurantApi,
+} from "@/hooks/api/useRestaurantsApi";
 import { useFavorites } from "@/hooks/useFavorites";
-import { useRestaurants } from "@/hooks/useRestaurants";
-import { useBookingStore } from "@/stores/bookingStore";
 import { BookingRequest } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Linking,
   NativeScrollEvent,
@@ -31,24 +31,6 @@ import {
 } from "react-native-safe-area-context";
 
 // Функция для форматирования цены в стиле $$
-const formatPriceLevel = (price: {
-  min: number;
-  max: number;
-  currency: string;
-}): string => {
-  if (price.currency === "KZT") {
-    const avgPrice = (price.min + price.max) / 2;
-    if (avgPrice < 3000) return "$";
-    if (avgPrice < 6000) return "$$";
-    if (avgPrice < 10000) return "$$$";
-    return "$$$$";
-  }
-  const avgPrice = (price.min + price.max) / 2;
-  if (avgPrice < 15) return "$";
-  if (avgPrice < 30) return "$$";
-  if (avgPrice < 50) return "$$$";
-  return "$$$$";
-};
 
 // Функция для форматирования времени работы
 const formatWorkingHours = (
@@ -66,22 +48,35 @@ const formatWorkingHours = (
   ];
   const currentDay = days[today] as keyof typeof workingHours;
 
+  // Отладочная информация
+  console.log("🕒 Working hours data:", workingHours);
+  console.log("🕒 Current day:", currentDay, "Day index:", today);
+
   // Получаем время для текущего дня
   const todayHours = workingHours[currentDay];
+  console.log("🕒 Today hours:", todayHours);
 
   // Проверяем, работает ли сегодня
-  if (todayHours === "Closed" || !todayHours) {
+  if (todayHours === "Closed" || !todayHours || todayHours === "") {
     return "Закрыто сегодня";
   }
 
   // Форматируем время
   if (typeof todayHours === "string") {
-    const [start, end] = todayHours.split("-");
-    return `Сегодня ${start}-${end}`;
+    // Проверяем, что строка содержит корректный формат времени
+    if (todayHours.includes("-")) {
+      const [start, end] = todayHours.split("-");
+      if (start && end) {
+        return `Сегодня ${start.trim()}-${end.trim()}`;
+      }
+    }
+    // Если формат неверный, показываем как есть
+    return `Сегодня ${todayHours}`;
   } else if (
     todayHours &&
     typeof todayHours === "object" &&
-    "open" in todayHours
+    "open" in todayHours &&
+    "close" in todayHours
   ) {
     return `Сегодня ${todayHours.open}-${todayHours.close}`;
   }
@@ -89,14 +84,39 @@ const formatWorkingHours = (
   return "Часы работы уточняйте";
 };
 
+// Функция для форматирования всех часов работы
+const formatAllWorkingHours = (
+  workingHours: Restaurant["workingHours"]
+): string => {
+  const days = [
+    { key: "monday", label: "Понедельник" },
+    { key: "tuesday", label: "Вторник" },
+    { key: "wednesday", label: "Среда" },
+    { key: "thursday", label: "Четверг" },
+    { key: "friday", label: "Пятница" },
+    { key: "saturday", label: "Суббота" },
+    { key: "sunday", label: "Воскресенье" },
+  ];
+
+  return days
+    .map(({ key, label }) => {
+      const hours = workingHours[key as keyof typeof workingHours];
+      if (!hours || hours === "Closed" || hours === "") {
+        return `${label}: Закрыто`;
+      }
+      return `${label}: ${hours}`;
+    })
+    .join("\n");
+};
+
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: restaurants = [] } = useRestaurants("");
+  const { data: restaurant, isLoading, error } = useRestaurantApi(id || "");
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { addBooking } = useBookingStore();
   const createBookingMutation = useCreateBooking();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showFullWorkingHours, setShowFullWorkingHours] = useState(false);
   const [selectedGuests, setSelectedGuests] = useState(2);
 
   // Получаем безопасные отступы
@@ -104,11 +124,6 @@ export default function RestaurantDetailScreen() {
 
   // Анимированное значение для связи скролла с изображением
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // Находим ресторан по ID
-  const restaurant = useMemo(() => {
-    return restaurants.find((r) => r.id === id);
-  }, [restaurants, id]);
 
   const isRestaurantFavorite = restaurant ? isFavorite(restaurant.id) : false;
 
@@ -160,45 +175,24 @@ export default function RestaurantDetailScreen() {
       try {
         console.log("🎯 Создаем бронирование:", booking);
 
-        // Используем новый API для создания бронирования
-        const apiBooking = await createBookingMutation.mutateAsync({
+        // Используем только новый API для создания бронирования
+        await createBookingMutation.mutateAsync({
           restaurantId: booking.restaurantId,
           date: booking.date,
           time: booking.time,
           guests: booking.guests,
+          customerName: booking.customerName,
+          customerPhone: booking.customerPhone,
           comment: booking.comment,
         });
-
-        // Также добавляем в локальное хранилище для совместимости
-        await addBooking(booking);
-
-        Alert.alert(
-          "Бронирование подтверждено!",
-          `Ваш столик на ${booking.guests} ${
-            booking.guests === 1 ? "человека" : "человек"
-          } забронирован на ${new Date(booking.date).toLocaleDateString(
-            "ru-RU",
-            {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            }
-          )} в ${booking.time}.`,
-          [{ text: "ОК" }]
-        );
 
         // Закрываем модальное окно
         setShowBookingModal(false);
       } catch (error) {
         console.error("❌ Ошибка создания бронирования:", error);
-        Alert.alert(
-          "Ошибка бронирования",
-          "К сожалению, не удалось обработать ваше бронирование. Попробуйте еще раз.",
-          [{ text: "ОК" }]
-        );
       }
     },
-    [addBooking, createBookingMutation, setShowBookingModal]
+    [createBookingMutation, setShowBookingModal]
   );
 
   // Обработчик скролла для связи с изображением
@@ -210,21 +204,115 @@ export default function RestaurantDetailScreen() {
     [scrollY]
   );
 
-  if (!restaurant) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-background-cream">
+        {/* Header skeleton */}
+        <View
+          className="absolute left-6 right-6 z-50 flex-row justify-between"
+          style={{
+            position: "absolute",
+            top: insets.top + 16,
+          }}
+        >
+          <View className="w-10 h-10 bg-neutral-200 rounded-full" />
+          <View className="flex-row gap-3">
+            <View className="w-10 h-10 bg-neutral-200 rounded-full" />
+            <View className="w-10 h-10 bg-neutral-200 rounded-full" />
+          </View>
+        </View>
+
+        {/* Image skeleton */}
+        <View className="h-[350px] bg-neutral-200" />
+
+        {/* Content skeleton */}
+        <View className="flex-1 bg-background-cream" style={{ marginTop: -32 }}>
+          <View className="rounded-t-3xl bg-background-secondary">
+            <View className="px-4 py-4 bg-background-cream">
+              {/* Name skeleton */}
+              <View className="mb-3">
+                <View className="h-8 bg-neutral-200 rounded w-3/4" />
+              </View>
+
+              {/* Rating skeleton */}
+              <View className="flex-row items-center mb-4">
+                <View className="h-4 bg-neutral-200 rounded w-20" />
+              </View>
+
+              {/* Tags skeleton */}
+              <View className="flex-row gap-2 mb-4">
+                <View className="h-6 bg-neutral-200 rounded-full w-16" />
+                <View className="h-6 bg-neutral-200 rounded-full w-20" />
+                <View className="h-6 bg-neutral-200 rounded-full w-14" />
+              </View>
+            </View>
+
+            {/* Contact info skeleton */}
+            <View className="mx-4 mb-4 bg-background-cream p-4 rounded-lg">
+              <View className="flex-row items-start mb-3">
+                <View className="w-5 h-5 bg-neutral-200 rounded" />
+                <View className="ml-3 flex-1">
+                  <View className="h-4 bg-neutral-200 rounded w-full mb-1" />
+                  <View className="h-4 bg-neutral-200 rounded w-3/4" />
+                </View>
+              </View>
+              <View className="flex-row items-center mb-3">
+                <View className="w-5 h-5 bg-neutral-200 rounded" />
+                <View className="ml-3 h-4 bg-neutral-200 rounded w-32" />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom button skeleton */}
+        <View className="absolute bottom-0 left-0 right-0 bg-background px-4 pb-6 pt-3 border-t border-border-light bg-background-cream">
+          <SafeAreaView edges={["bottom"]}>
+            <View className="h-12 bg-neutral-200 rounded-lg" />
+          </SafeAreaView>
+        </View>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error || !restaurant) {
     return (
       <SafeAreaView className="flex-1 bg-background-primary items-center justify-center">
         <Typography variant="h6" className="text-text-secondary">
-          Ресторан не найден
+          {error ? "Ошибка загрузки ресторана" : "Ресторан не найден"}
         </Typography>
       </SafeAreaView>
     );
   }
 
-  const priceLevel = formatPriceLevel(restaurant.features.averagePrice);
+  // Format price level based on priceRange
+  const getPriceLevel = (priceRange?: "low" | "medium" | "high"): string => {
+    switch (priceRange) {
+      case "low":
+        return "$";
+      case "medium":
+        return "$$";
+      case "high":
+        return "$$$";
+      default:
+        return "$$";
+    }
+  };
+
+  const priceLevel = getPriceLevel(restaurant.priceRange);
   const workingHours = formatWorkingHours(restaurant.workingHours);
   const images = restaurant.images?.length
     ? restaurant.images
     : [restaurant.image];
+
+  // Отладочная информация для фичей
+  console.log("🏷️ Restaurant data in detail page:", {
+    name: restaurant.name,
+    cuisine: restaurant.cuisine,
+    features: restaurant.features,
+    tags: restaurant.tags,
+  });
 
   return (
     <View className="flex-1 bg-background-cream">
@@ -364,15 +452,38 @@ export default function RestaurantDetailScreen() {
               </View>
 
               {/* Working Hours */}
-              <View className="flex-row items-center mb-3">
+              <View className="flex-row items-start mb-3">
                 <Ionicons
                   name="time-outline"
                   size={20}
                   color={Colors.neutral[600]}
+                  style={{ marginTop: 2 }}
                 />
-                <Typography variant="body2" className="ml-3 text-text-primary">
-                  {workingHours}
-                </Typography>
+                <View className="ml-3 flex-1">
+                  {showFullWorkingHours ? (
+                    <Text className="text-text-primary text-sm leading-5">
+                      {formatAllWorkingHours(restaurant.workingHours)}
+                    </Text>
+                  ) : (
+                    <Typography variant="body2" className="text-text-primary">
+                      {workingHours}
+                    </Typography>
+                  )}
+                  {/* Показываем все дни недели при нажатии */}
+                  <TouchableOpacity
+                    onPress={() =>
+                      setShowFullWorkingHours(!showFullWorkingHours)
+                    }
+                    activeOpacity={0.7}
+                    className="mt-1"
+                  >
+                    <Typography variant="caption" color="primary">
+                      {showFullWorkingHours
+                        ? "Показать только сегодня"
+                        : "Показать все часы работы"}
+                    </Typography>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Phone */}

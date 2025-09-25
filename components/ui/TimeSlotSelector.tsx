@@ -50,7 +50,7 @@ export function TimeSlotSelector({
                 variant="body2"
                 className="text-text-secondary text-center mb-2"
               >
-                Ресторан закрыт в {restaurantInfo?.dayOfWeek}
+                Ресторан закрыт в этот день
               </Typography>
               <Typography
                 variant="body2"

@@ -35,22 +35,6 @@ export interface RestaurantContact {
   };
 }
 
-export interface RestaurantFeatures {
-  hasDelivery: boolean;
-  hasReservation: boolean;
-  hasWifi: boolean;
-  hasParking: boolean;
-  hasChildMenu: boolean;
-  hasVeganOptions: boolean;
-  hasAlcohol: boolean;
-  acceptsCards: boolean;
-  averagePrice: {
-    min: number;
-    max: number;
-    currency: string;
-  };
-}
-
 export interface Restaurant {
   id: string;
   name: string;
@@ -63,7 +47,7 @@ export interface Restaurant {
   location: RestaurantLocation;
   workingHours: RestaurantWorkingHours;
   contact: RestaurantContact;
-  features: RestaurantFeatures;
+  features: string[];
   cuisine: string[];
   createdAt: string;
   updatedAt: string;

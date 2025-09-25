@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -10,22 +10,31 @@ import { LocationHeader } from "@/components/ui/LocationHeader";
 import { RestaurantCard } from "@/components/ui/RestaurantCard";
 import { SearchWrapper } from "@/components/ui/SearchWrapper";
 import { FilterChip } from "@/entities/Restaurant";
+import { useCuisineTypes } from "@/hooks/api/useRestaurantsApi";
 import { useFilteredRestaurants } from "@/hooks/useFilteredRestaurants";
 import { useCityContext } from "@/providers/CityProvider";
 import { useFiltersContext } from "@/providers/FiltersProvider";
 
-const mockFilterChips: FilterChip[] = [
-  { id: "1", label: "Грузинская кухня", isSelected: false, type: "cuisine" },
-  { id: "2", label: "Детское меню", isSelected: false, type: "feature" },
-  { id: "3", label: "Быстрая доставка", isSelected: false, type: "feature" },
-];
+// Убираем мок данные - используем реальные данные из API
+const initialFilterChips: FilterChip[] = [];
 
 export default function HomeScreen() {
   const [searchText, setSearchText] = useState("");
-  const [filterChips, setFilterChips] = useState(mockFilterChips);
+  const [filterChips, setFilterChips] = useState(initialFilterChips);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { getDisplayName } = useCityContext();
   const { getActiveFiltersCount } = useFiltersContext();
+
+  // Получаем типы кухонь из API
+  const { data: cuisineTypes = [] } = useCuisineTypes();
+
+  // Заполняем фильтр-чипы первыми 10 кухнями при загрузке
+  useEffect(() => {
+    if (cuisineTypes.length > 0 && filterChips.length === 0) {
+      const firstTenCuisines = cuisineTypes.slice(0, 10);
+      setFilterChips(firstTenCuisines);
+    }
+  }, [cuisineTypes, filterChips.length]);
 
   // Refs для анимации и скролла
   const scrollViewRef = useRef<ScrollView>(null);
@@ -52,11 +61,11 @@ export default function HomeScreen() {
 
       const matchesFilters =
         selectedChipLabels.length === 0 ||
-        restaurant.tags.some((tag: any) =>
+        restaurant.cuisine.some((cuisine: string) =>
           selectedChipLabels.some(
             (chipLabel) =>
-              tag.label.toLowerCase().includes(chipLabel) ||
-              chipLabel.includes(tag.label.toLowerCase())
+              cuisine.toLowerCase().includes(chipLabel) ||
+              chipLabel.includes(cuisine.toLowerCase())
           )
         );
 

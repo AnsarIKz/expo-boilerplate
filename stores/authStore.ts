@@ -54,6 +54,9 @@ export const useAuthStore = create<AuthState>()(
           user,
           isLoading: false,
         });
+
+        // Note: Device token linking will be handled by the useDeviceTokenLink hook
+        // when it's used in components, avoiding the circular dependency
       },
 
       logout: () => {

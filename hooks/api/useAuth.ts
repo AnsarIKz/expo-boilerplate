@@ -1,3 +1,4 @@
+import { useDeviceTokenLink } from "@/hooks/useDeviceTokenLink";
 import {
   adaptAuthUserToUser,
   adaptSessionUserToUser,
@@ -86,6 +87,7 @@ export function useLogin() {
   const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
   const { login } = useAuthStore();
+  const { linkDeviceToUser } = useDeviceTokenLink();
 
   return useMutation({
     mutationFn: (data: LoginRequest) => {
@@ -116,6 +118,11 @@ export function useLogin() {
         accessToken: responseData.access_token,
         refreshToken: responseData.refresh_token,
         user: adaptAuthUserToUser(responseData.user),
+      });
+
+      // Link device token to user account after successful login
+      linkDeviceToUser().catch((error) => {
+        console.error("❌ Failed to link device after login:", error);
       });
 
       // Invalidate session query to trigger fresh data fetch

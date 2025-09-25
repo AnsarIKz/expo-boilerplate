@@ -3,25 +3,21 @@ import { useFiltersContext } from "@/providers/FiltersProvider";
 import { useMemo } from "react";
 import { useRestaurants } from "./useRestaurants";
 
-// Маппинг фильтров к полям ресторана
-const CUISINE_MAPPING: Record<string, string[]> = {
-  italian: ["Итальянская"],
-  georgian: ["Грузинская"],
-  kazakh: ["Казахская"],
-  asian: ["Азиатская", "Японская", "Китайская", "Тайская"],
-  european: ["Европейская", "Французская", "Немецкая"],
-  american: ["Американская"],
-};
+// Функция для проверки соответствия кухни ресторана выбранным фильтрам
+const matchesCuisineFilter = (
+  restaurantCuisines: string[],
+  selectedCuisineSlugs: string[]
+): boolean => {
+  if (selectedCuisineSlugs.length === 0) return true;
 
-const FEATURE_MAPPING: Record<string, keyof Restaurant["features"]> = {
-  delivery: "hasDelivery",
-  reservation: "hasReservation",
-  wifi: "hasWifi",
-  parking: "hasParking",
-  child_menu: "hasChildMenu",
-  vegan: "hasVeganOptions",
-  alcohol: "hasAlcohol",
-  cards: "acceptsCards",
+  // Проверяем, есть ли хотя бы одна выбранная кухня среди кухонь ресторана
+  return selectedCuisineSlugs.some((slug) =>
+    restaurantCuisines.some(
+      (cuisine) =>
+        cuisine.toLowerCase().includes(slug.toLowerCase()) ||
+        slug.toLowerCase().includes(cuisine.toLowerCase())
+    )
+  );
 };
 
 const TAG_MAPPING: Record<string, string[]> = {
@@ -56,14 +52,17 @@ function filterRestaurants(
   filters: FiltersState
 ): Restaurant[] {
   return restaurants.filter((restaurant) => {
-    // Фильтр по цене
-    const avgPrice =
-      (restaurant.features.averagePrice.min +
-        restaurant.features.averagePrice.max) /
-      2;
+    // Фильтр по цене (используем строковый priceRange)
+    const priceRangeMap: { [key: string]: number } = {
+      low: 2000, // ~$20
+      medium: 5000, // ~$50
+      high: 10000, // ~$100
+    };
+
+    const restaurantPrice = priceRangeMap[restaurant.priceRange || "medium"];
     if (
-      avgPrice < filters.priceRange.min ||
-      avgPrice > filters.priceRange.max
+      restaurantPrice < filters.priceRange.min ||
+      restaurantPrice > filters.priceRange.max
     ) {
       return false;
     }
@@ -71,13 +70,8 @@ function filterRestaurants(
     // Фильтр по типу кухни
     const selectedCuisines = filters.cuisines.filter((c) => c.isSelected);
     if (selectedCuisines.length > 0) {
-      const hasMatchingCuisine = selectedCuisines.some((cuisine) => {
-        const mappedCuisines = CUISINE_MAPPING[cuisine.id] || [];
-        return restaurant.cuisine.some((restaurantCuisine) =>
-          mappedCuisines.includes(restaurantCuisine)
-        );
-      });
-      if (!hasMatchingCuisine) {
+      const selectedCuisineSlugs = selectedCuisines.map((c) => c.id);
+      if (!matchesCuisineFilter(restaurant.cuisine, selectedCuisineSlugs)) {
         return false;
       }
     }
@@ -86,8 +80,7 @@ function filterRestaurants(
     const selectedFeatures = filters.features.filter((f) => f.isSelected);
     if (selectedFeatures.length > 0) {
       const hasAllFeatures = selectedFeatures.every((feature) => {
-        const featureKey = FEATURE_MAPPING[feature.id];
-        return featureKey && restaurant.features[featureKey];
+        return restaurant.features.includes(feature.id);
       });
       if (!hasAllFeatures) {
         return false;
@@ -114,16 +107,39 @@ function filterRestaurants(
 
 export const useFilteredRestaurants = (searchQuery?: string) => {
   const { filters } = useFiltersContext();
+
+  // Подготавливаем фильтры для API
+  const selectedCuisineSlugs = filters.cuisines
+    .filter((c) => c.isSelected)
+    .map((c) => c.id);
+
+  const selectedFeatures = filters.features
+    .filter((f) => f.isSelected)
+    .map((f) => f.id);
+
+  const apiFilters = {
+    ...(selectedCuisineSlugs.length > 0
+      ? { cuisine_types: selectedCuisineSlugs }
+      : {}),
+    ...(selectedFeatures.length > 0 ? { features: selectedFeatures } : {}),
+  };
+
   const {
     data: restaurants,
     isLoading,
     error,
     refetch,
-  } = useRestaurants(searchQuery);
+  } = useRestaurants(searchQuery, apiFilters);
 
   const filteredRestaurants = useMemo(() => {
     if (!restaurants) return [];
-    return filterRestaurants(restaurants, filters);
+    // Применяем только клиентские фильтры (цена, tags)
+    // Фильтры по кухне и удобствам уже применены на сервере
+    return filterRestaurants(restaurants, {
+      ...filters,
+      cuisines: [], // Убираем фильтр кухни, так как он уже применен на сервере
+      features: [], // Убираем фильтр удобств, так как он уже применен на сервере
+    });
   }, [restaurants, filters]);
 
   return {

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,6 +12,7 @@ import { useFavoritesStore } from "@/stores/favoritesStore";
 export default function FavoritesScreen() {
   const { favorites, getFavoritesCount } = useFavoritesStore();
   const { data: allRestaurants = [] } = useRestaurants("");
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Получаем полные данные ресторанов из избранного
   const favoriteRestaurants = useMemo(() => {
@@ -56,9 +57,18 @@ export default function FavoritesScreen() {
     });
   }, [favorites, allRestaurants]);
 
-  const handleRestaurantPress = useCallback((restaurantId: string) => {
-    router.push(`/restaurant/${restaurantId}` as any);
-  }, []);
+  const handleRestaurantPress = useCallback(
+    (restaurantId: string) => {
+      if (isNavigating) return; // Предотвращаем множественные нажатия
+
+      setIsNavigating(true);
+      router.push(`/restaurant/${restaurantId}` as any);
+
+      // Сбрасываем флаг через небольшую задержку
+      setTimeout(() => setIsNavigating(false), 1000);
+    },
+    [isNavigating]
+  );
 
   const favoritesCount = getFavoritesCount();
 
