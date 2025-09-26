@@ -10,8 +10,8 @@ import { Card } from "@/components/ui/Card";
 import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
 import { useDeleteAccount, useLogout } from "@/hooks/api/useAuth";
-import { useDeviceToken } from "@/hooks/useDeviceToken";
 import { useAuthStore } from "@/stores/authStore";
+import { useDeviceTokenStore } from "@/stores/deviceTokenStore";
 
 // Компонент для пункта меню профиля
 const ProfileMenuItem = ({
@@ -60,17 +60,11 @@ const ProfileMenuItem = ({
 );
 
 // Компонент для неавторизованного пользователя
-const AnonymousProfile = ({
-  deviceToken,
-  isLoading,
-  error,
-  onLogin,
-}: {
-  deviceToken: string | null;
-  isLoading: boolean;
-  error: string | null;
-  onLogin: () => void;
-}) => {
+const AnonymousProfile = ({ onLogin }: { onLogin: () => void }) => {
+  const deviceToken = useDeviceTokenStore((state) => state.deviceToken);
+  const isLoading = useDeviceTokenStore((state) => state.isLoading);
+  const error = useDeviceTokenStore((state) => state.error);
+
   const handleSettings = () => {
     router.push("/settings");
   };
@@ -98,14 +92,14 @@ const AnonymousProfile = ({
             user
           </Typography>
           <Typography variant="body2" color="secondary" className="mb-4">
-            Device Token:{" "}
+            Device ID:{" "}
             {isLoading
-              ? "Загрузка..."
+              ? "Инициализация..."
               : error
-              ? "Ошибка загрузки"
+              ? "Ошибка инициализации"
               : deviceToken
-              ? deviceToken.substring(0, 12) + "..."
-              : "Инициализация..."}
+              ? `${deviceToken.substring(0, 8)}...`
+              : "Не инициализирован"}
           </Typography>
 
           {/* Login Button */}
@@ -164,12 +158,10 @@ const AnonymousProfile = ({
 // Компонент для авторизованного пользователя
 const AuthenticatedProfile = ({
   user,
-  deviceToken,
   onLogout,
   onDeleteAccount,
 }: {
   user: any;
-  deviceToken: string | null;
   onLogout: () => void;
   onDeleteAccount: () => void;
 }) => {
@@ -217,10 +209,6 @@ const AuthenticatedProfile = ({
           </Typography>
           <Typography variant="body2" color="secondary" className="mb-2">
             ID: {user?.id?.substring(0, 12)}...
-          </Typography>
-          <Typography variant="body2" color="secondary" className="mb-4">
-            Device Token:{" "}
-            {deviceToken ? deviceToken.substring(0, 12) + "..." : "Загрузка..."}
           </Typography>
         </View>
       </Card>
@@ -282,19 +270,12 @@ const AuthenticatedProfile = ({
 
 export default function ProfileScreen() {
   const { isAuthenticated, user } = useAuthStore();
-  const { deviceToken, isRegistered, isLoading, error } = useDeviceToken();
+
   const logoutMutation = useLogout();
   const deleteAccountMutation = useDeleteAccount();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Отладочная информация
-  console.log("🔍 Profile Debug:", {
-    isAuthenticated,
-    deviceToken: deviceToken ? `${deviceToken.substring(0, 8)}...` : null,
-    isRegistered,
-    isLoading,
-    error,
-  });
 
   const handleLogout = () => {
     Alert.alert("Выход", "Вы уверены, что хотите выйти из аккаунта?", [
@@ -341,17 +322,11 @@ export default function ProfileScreen() {
         {isAuthenticated ? (
           <AuthenticatedProfile
             user={user}
-            deviceToken={deviceToken}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
           />
         ) : (
-          <AnonymousProfile
-            deviceToken={deviceToken}
-            isLoading={isLoading}
-            error={error}
-            onLogin={handleLogin}
-          />
+          <AnonymousProfile onLogin={handleLogin} />
         )}
       </ScrollView>
 

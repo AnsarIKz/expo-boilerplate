@@ -16,10 +16,10 @@ import "../global.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initializeApiClient } from "@/lib/api/init";
 import { errorHandler } from "@/lib/errorHandler";
+import { useDeviceTokenStore } from "@/stores/deviceTokenStore";
 
 import { OfflineIndicator } from "@/components/ui/Toast";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { useDeviceToken } from "@/hooks/useDeviceToken";
 import { CityProvider } from "@/providers/CityProvider";
 import { FiltersProvider } from "@/providers/FiltersProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -30,15 +30,21 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-
-  // Initialize device token for anonymous users
-  useDeviceToken();
+  const initializeDeviceToken = useDeviceTokenStore(
+    (state) => state.initializeDeviceToken
+  );
 
   // Initialize API client
   useEffect(() => {
     const cleanup = initializeApiClient();
     return cleanup;
   }, []);
+
+  // Initialize device token
+  useEffect(() => {
+    console.log("📱 _layout.tsx: Initializing device token");
+    initializeDeviceToken();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize error handler
   useEffect(() => {

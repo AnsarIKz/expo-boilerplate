@@ -1,8 +1,92 @@
+import { deviceTokenApi } from "@/lib/api/deviceToken";
+import { useDeviceTokenStore } from "@/stores/deviceTokenStore";
 import axios from "axios";
 
 // Flag to prevent multiple concurrent refresh attempts
 let isRefreshing = false;
 let failedRequestsQueue: any[] = [];
+
+// Flag to prevent multiple concurrent device token registration attempts
+let isRegisteringDevice = false;
+let deviceRegistrationQueue: any[] = [];
+
+// Generate unique device token
+const generateDeviceToken = (): string => {
+  // Use crypto.randomUUID() if available, fallback to custom implementation
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  // Fallback for environments without crypto.randomUUID
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+// Register device token if it doesn't exist
+export const ensureDeviceToken = async (): Promise<string | null> => {
+  const deviceTokenStore = useDeviceTokenStore.getState();
+
+  // If device token already exists, return it
+  if (deviceTokenStore.deviceToken) {
+    return deviceTokenStore.deviceToken;
+  }
+
+  // If already registering, queue this request
+  if (isRegisteringDevice) {
+    console.log("📱 Device registration already in progress, queueing request");
+    return new Promise((resolve, reject) => {
+      deviceRegistrationQueue.push({ resolve, reject });
+    });
+  }
+
+  isRegisteringDevice = true;
+
+  try {
+    console.log("📱 No device token found, registering new device");
+
+    // Generate new device token
+    const newDeviceToken = generateDeviceToken();
+
+    // Register device with backend
+    const response = await deviceTokenApi.registerDevice({
+      device_id: newDeviceToken,
+      device_type: "mobile",
+      device_name: "React Native App",
+    });
+
+    // Store the registered token
+    const registeredToken = response.device_id;
+    deviceTokenStore.setDeviceToken(registeredToken);
+
+    // Update API client with new device token
+    (apiClient as any)._deviceToken = registeredToken;
+
+    console.log("✅ Device token registered and stored successfully");
+
+    // Process queued requests
+    deviceRegistrationQueue.forEach(({ resolve }) => {
+      resolve(registeredToken);
+    });
+    deviceRegistrationQueue = [];
+
+    return registeredToken;
+  } catch (error) {
+    console.error("❌ Device registration failed:", error);
+
+    // Reject all queued requests
+    deviceRegistrationQueue.forEach(({ reject }) => {
+      reject(error);
+    });
+    deviceRegistrationQueue = [];
+
+    return null;
+  } finally {
+    isRegisteringDevice = false;
+  }
+};
 
 // Base URLs for Django Restaurant API
 export const API_BASE_URL =
@@ -79,6 +163,9 @@ apiClient.interceptors.request.use(
       if (deviceToken) {
         config.headers["X-Device-Token"] = deviceToken;
         console.log("📱 Added Device Token");
+      } else {
+        // If no device token either, we'll handle it in the response interceptor
+        console.log("⚠️ No auth token or device token available");
       }
     }
     return config;
@@ -156,11 +243,15 @@ apiClient.interceptors.response.use(
     const isRefreshTokenEndpoint = originalRequest.url?.includes(
       "/auth/refresh-token/"
     );
+    const isDeviceRegistrationEndpoint = originalRequest.url?.includes(
+      "/auth/device/register/"
+    );
 
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !isRefreshTokenEndpoint
+      !isRefreshTokenEndpoint &&
+      !isDeviceRegistrationEndpoint
     ) {
       originalRequest._retry = true;
 
@@ -237,9 +328,25 @@ apiClient.interceptors.response.use(
           isRefreshing = false;
         }
       } else {
-        console.log("🔓 No refresh token available - Auto logout");
-        if (onLogout) {
-          onLogout();
+        console.log("🔓 No refresh token available - trying device token");
+
+        // Try to use device token for anonymous access
+        const deviceToken = await ensureDeviceToken();
+
+        if (deviceToken) {
+          console.log("📱 Using device token for anonymous access");
+
+          // Update the original request with device token
+          originalRequest.headers["X-Device-Token"] = deviceToken;
+          delete originalRequest.headers.Authorization; // Remove auth header
+
+          // Retry the original request with device token
+          return apiClient(originalRequest);
+        } else {
+          console.log("🔓 No device token available - Auto logout");
+          if (onLogout) {
+            onLogout();
+          }
         }
       }
     }

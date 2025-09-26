@@ -1,4 +1,3 @@
-import { deviceTokenApi } from "@/lib/api/deviceToken";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -9,49 +8,13 @@ interface DeviceTokenState {
   error: string | null;
 
   // Actions
-  generateDeviceToken: () => string;
-  registerDevice: () => Promise<void>;
   getDeviceToken: () => string | null;
+  setDeviceToken: (token: string) => void;
   clearDeviceToken: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  initializeDeviceToken: () => Promise<void>;
 }
-
-// Generate unique device token
-const generateDeviceToken = (): string => {
-  // Use crypto.randomUUID() if available, fallback to custom implementation
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  // Fallback for environments without crypto.randomUUID
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-// Register device with backend
-const registerDeviceAPI = async (deviceToken: string): Promise<string> => {
-  console.log("📱 Registering device:", deviceToken);
-
-  try {
-    const response = await deviceTokenApi.registerDevice({
-      device_id: deviceToken,
-      device_type: "mobile", // React Native app
-      device_name: "React Native App",
-    });
-
-    console.log("✅ Device registered successfully:", response);
-
-    // API returns device_id in response, which is our device token
-    return response.device_id;
-  } catch (error) {
-    console.error("❌ Device registration failed:", error);
-    throw error;
-  }
-};
 
 export const useDeviceTokenStore = create<DeviceTokenState>()(
   persist(
@@ -60,56 +23,12 @@ export const useDeviceTokenStore = create<DeviceTokenState>()(
       isLoading: false,
       error: null,
 
-      generateDeviceToken: () => {
-        const deviceToken = generateDeviceToken();
-        set({ deviceToken });
-        return deviceToken;
-      },
-
-      registerDevice: async () => {
-        const state = get();
-
-        // If already registered with valid token, return
-        if (state.deviceToken) {
-          console.log("📱 Device already registered");
-          return;
-        }
-
-        set({ isLoading: true, error: null });
-
-        try {
-          // Generate device token if not exists
-          let deviceToken = state.deviceToken;
-          if (!deviceToken) {
-            deviceToken = state.generateDeviceToken();
-          }
-
-          // Register device with backend
-          const registeredToken = await registerDeviceAPI(deviceToken);
-
-          set({
-            deviceToken: registeredToken,
-            isLoading: false,
-            error: null,
-          });
-
-          console.log("✅ Device token stored successfully");
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Device registration failed";
-          set({
-            isLoading: false,
-            error: errorMessage,
-          });
-          console.error("❌ Device registration error:", errorMessage);
-          throw error;
-        }
-      },
-
       getDeviceToken: () => {
         return get().deviceToken;
+      },
+
+      setDeviceToken: (token: string) => {
+        set({ deviceToken: token, error: null });
       },
 
       clearDeviceToken: () => {
@@ -125,6 +44,38 @@ export const useDeviceTokenStore = create<DeviceTokenState>()(
 
       setError: (error) => {
         set({ error });
+      },
+
+      initializeDeviceToken: async () => {
+        const state = get();
+
+        // If device token already exists, no need to initialize
+        if (state.deviceToken) {
+          console.log(
+            "📱 Device token already exists, skipping initialization"
+          );
+          return;
+        }
+
+        // If already loading, don't start another initialization
+        if (state.isLoading) {
+          console.log("📱 Device token initialization already in progress");
+          return;
+        }
+
+        console.log("📱 Starting device token initialization");
+        set({ isLoading: true, error: null });
+
+        try {
+          // Import ensureDeviceToken dynamically to avoid circular dependency
+          const { ensureDeviceToken } = await import("@/lib/api/config");
+          await ensureDeviceToken();
+        } catch (error) {
+          console.error("Failed to initialize device token:", error);
+          set({ error: "Failed to initialize device token" });
+        } finally {
+          set({ isLoading: false });
+        }
       },
     }),
     {
