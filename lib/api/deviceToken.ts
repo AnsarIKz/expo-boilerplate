@@ -59,4 +59,20 @@ export const deviceTokenApi = {
     const response = await apiClient.get("/auth/device/info/");
     return response.data;
   },
+
+  // Check if device token exists
+  checkDeviceToken: async (deviceId: string): Promise<boolean> => {
+    console.log("📱 Checking device token:", deviceId);
+    try {
+      const response = await apiClient.get(
+        `/api/restaurant/device-tokens/${deviceId}/check/`
+      );
+      return response.status === 200;
+    } catch (error: any) {
+      if (error.response?.status === 422) {
+        return false; // Token doesn't exist
+      }
+      throw error; // Re-throw other errors
+    }
+  },
 };

@@ -10,6 +10,10 @@ let failedRequestsQueue: any[] = [];
 let isRegisteringDevice = false;
 let deviceRegistrationQueue: any[] = [];
 
+// Flag to prevent multiple concurrent device token validation attempts
+let isValidatingDevice = false;
+let deviceValidationQueue: any[] = [];
+
 // Generate unique device token
 const generateDeviceToken = (): string => {
   // Use crypto.randomUUID() if available, fallback to custom implementation
@@ -85,6 +89,99 @@ export const ensureDeviceToken = async (): Promise<string | null> => {
     return null;
   } finally {
     isRegisteringDevice = false;
+  }
+};
+
+// Validate and ensure device token exists on server
+export const validateAndEnsureDeviceToken = async (): Promise<
+  string | null
+> => {
+  // If already validating, queue this request
+  if (isValidatingDevice) {
+    console.log("📱 Device validation already in progress, queueing request");
+    return new Promise((resolve, reject) => {
+      deviceValidationQueue.push({ resolve, reject });
+    });
+  }
+
+  isValidatingDevice = true;
+
+  try {
+    const deviceTokenStore = useDeviceTokenStore.getState();
+
+    // If no device token stored locally, generate new one
+    if (!deviceTokenStore.deviceToken) {
+      console.log("📱 No local device token, generating new one");
+      const result = await ensureDeviceToken();
+
+      // Process queued requests
+      deviceValidationQueue.forEach(({ resolve }) => {
+        resolve(result);
+      });
+      deviceValidationQueue = [];
+
+      return result;
+    }
+
+    // Check if stored device token exists on server
+    try {
+      const exists = await deviceTokenApi.checkDeviceToken(
+        deviceTokenStore.deviceToken
+      );
+
+      if (exists) {
+        console.log("📱 Device token exists on server, using stored token");
+        const result = deviceTokenStore.deviceToken;
+
+        // Process queued requests
+        deviceValidationQueue.forEach(({ resolve }) => {
+          resolve(result);
+        });
+        deviceValidationQueue = [];
+
+        return result;
+      } else {
+        console.log(
+          "📱 Device token doesn't exist on server, generating new one"
+        );
+        // Clear the invalid token
+        deviceTokenStore.clearDeviceToken();
+        const result = await ensureDeviceToken();
+
+        // Process queued requests
+        deviceValidationQueue.forEach(({ resolve }) => {
+          resolve(result);
+        });
+        deviceValidationQueue = [];
+
+        return result;
+      }
+    } catch (error) {
+      console.error("❌ Error checking device token:", error);
+      // If check fails, generate new token
+      deviceTokenStore.clearDeviceToken();
+      const result = await ensureDeviceToken();
+
+      // Process queued requests
+      deviceValidationQueue.forEach(({ resolve }) => {
+        resolve(result);
+      });
+      deviceValidationQueue = [];
+
+      return result;
+    }
+  } catch (error) {
+    console.error("❌ Device validation failed:", error);
+
+    // Reject all queued requests
+    deviceValidationQueue.forEach(({ reject }) => {
+      reject(error);
+    });
+    deviceValidationQueue = [];
+
+    return null;
+  } finally {
+    isValidatingDevice = false;
   }
 };
 
@@ -330,8 +427,8 @@ apiClient.interceptors.response.use(
       } else {
         console.log("🔓 No refresh token available - trying device token");
 
-        // Try to use device token for anonymous access
-        const deviceToken = await ensureDeviceToken();
+        // Validate and ensure device token exists on server
+        const deviceToken = await validateAndEnsureDeviceToken();
 
         if (deviceToken) {
           console.log("📱 Using device token for anonymous access");

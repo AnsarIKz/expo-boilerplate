@@ -125,4 +125,43 @@ describe("deviceTokenApi", () => {
       );
     });
   });
+
+  describe("checkDeviceToken", () => {
+    it("should return true when device token exists (status 200)", async () => {
+      (apiClient.get as jest.Mock).mockResolvedValue({
+        status: 200,
+        data: {},
+      });
+
+      const result = await deviceTokenApi.checkDeviceToken("device-id-123");
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        "/api/restaurant/device-tokens/device-id-123/check/"
+      );
+      expect(result).toBe(true);
+    });
+
+    it("should return false when device token doesn't exist (status 422)", async () => {
+      const error = new Error("Token not found");
+      (error as any).response = { status: 422 };
+      (apiClient.get as jest.Mock).mockRejectedValue(error);
+
+      const result = await deviceTokenApi.checkDeviceToken("device-id-123");
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        "/api/restaurant/device-tokens/device-id-123/check/"
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should throw error for other status codes", async () => {
+      const error = new Error("Server error");
+      (error as any).response = { status: 500 };
+      (apiClient.get as jest.Mock).mockRejectedValue(error);
+
+      await expect(
+        deviceTokenApi.checkDeviceToken("device-id-123")
+      ).rejects.toThrow("Server error");
+    });
+  });
 });
