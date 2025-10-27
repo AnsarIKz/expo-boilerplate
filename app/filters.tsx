@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { ScrollView, StatusBar, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/Button";
 import { FilterSection } from "@/components/ui/FilterSection";
-import { PriceRangeSlider } from "@/components/ui/PriceRangeSlider";
 import { Typography } from "@/components/ui/Typography";
 import {
   useCuisineTypes,
@@ -15,10 +14,9 @@ import {
 import { useFiltersContext } from "@/providers/FiltersProvider";
 
 export default function FiltersScreen() {
-  const [isSliderActive, setIsSliderActive] = useState(false);
   const {
     filters,
-    updatePriceRange,
+    togglePriceCategory,
     toggleCuisine,
     toggleFeature,
     toggleTag,
@@ -85,19 +83,12 @@ export default function FiltersScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!isSliderActive}
-      >
-        {/* Price Range */}
-        <PriceRangeSlider
-          minPrice={1000}
-          maxPrice={15000}
-          currentMin={filters.priceRange.min}
-          currentMax={filters.priceRange.max}
-          onRangeChange={updatePriceRange}
-          onSliderActiveChange={setIsSliderActive}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Price Categories */}
+        <FilterSection
+          title="Ценовой диапазон"
+          options={filters.priceCategories}
+          onOptionToggle={togglePriceCategory}
         />
 
         {/* Cuisine Types */}

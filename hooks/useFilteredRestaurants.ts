@@ -42,6 +42,7 @@ interface FiltersState {
     min: number;
     max: number;
   };
+  priceCategories: FilterOption[];
   cuisines: FilterOption[];
   features: FilterOption[];
   tags: FilterOption[];
@@ -117,11 +118,24 @@ export const useFilteredRestaurants = (searchQuery?: string) => {
     .filter((f) => f.isSelected)
     .map((f) => f.id);
 
+  const selectedPriceCategories = filters.priceCategories
+    .filter((c) => c.isSelected)
+    .map((c) => c.id);
+
   const apiFilters = {
     ...(selectedCuisineSlugs.length > 0
       ? { cuisine_types: selectedCuisineSlugs }
       : {}),
     ...(selectedFeatures.length > 0 ? { features: selectedFeatures } : {}),
+    ...(selectedPriceCategories.length > 0
+      ? {
+          price_range: selectedPriceCategories[0] as
+            | "BUDGET"
+            | "MODERATE"
+            | "EXPENSIVE"
+            | "VERY_EXPENSIVE",
+        }
+      : {}),
   };
 
   const {
@@ -151,6 +165,7 @@ export const useFilteredRestaurants = (searchQuery?: string) => {
       filters.cuisines.some((c) => c.isSelected) ||
       filters.features.some((f) => f.isSelected) ||
       filters.tags.some((t) => t.isSelected) ||
+      filters.priceCategories.some((c) => c.isSelected) ||
       filters.priceRange.min !== 1000 ||
       filters.priceRange.max !== 15000,
   };

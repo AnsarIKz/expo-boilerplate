@@ -302,19 +302,6 @@ export function BookingCreateModal({
                   >
                     Ошибка загрузки доступности. Попробуйте позже.
                   </Typography>
-                  <TouchableOpacity
-                    onPress={() => {
-                      // Просто сбрасываем дату, чтобы заставить перезагрузить данные
-                      const currentDate = selectedDate;
-                      setSelectedDate("");
-                      setTimeout(() => setSelectedDate(currentDate), 100);
-                    }}
-                    className="bg-primary-500 px-4 py-2 rounded-lg"
-                  >
-                    <Typography variant="body2" className="text-white">
-                      Повторить
-                    </Typography>
-                  </TouchableOpacity>
                 </View>
               ) : (
                 <>

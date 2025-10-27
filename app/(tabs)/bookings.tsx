@@ -1,24 +1,30 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AllBookingsModal } from "@/components/ui/AllBookingsModal";
 import { BookingCard } from "@/components/ui/BookingCard";
 import { BookingDetailsModal } from "@/components/ui/BookingModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TitleHeader } from "@/components/ui/TitleHeader";
 import { Typography } from "@/components/ui/Typography";
+import {
+  useBookingsApi,
+  useCancelBooking,
+} from "@/hooks/api/useRestaurantsApi";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useBookingStore } from "@/stores/bookingStore";
 import { Booking } from "@/types/booking";
 
 export default function BookingsScreen() {
-  const { bookings, cancelBooking, loadBookings, isLoading } =
-    useBookingStore();
+  // Используем tanstack query вместо zustand store
+  const { data: bookings = [], isLoading, refetch } = useBookingsApi();
   const { data: restaurants = [] } = useRestaurants();
-  const [refreshing, setRefreshing] = useState(false);
+  const cancelBookingMutation = useCancelBooking();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [allBookingsModalVisible, setAllBookingsModalVisible] = useState(false);
 
   // Helper function to parse booking date and time
   const parseBookingDateTime = useCallback((date?: string, time?: string) => {
@@ -45,17 +51,6 @@ export default function BookingsScreen() {
       return new Date(); // Fallback to current date
     }
   }, []);
-
-  // Debug logging
-  useEffect(() => {
-    console.log("🔍 BookingsScreen - Current bookings:", bookings.length);
-    console.log("🔍 BookingsScreen - Is loading:", isLoading);
-  }, [bookings, isLoading]);
-
-  // Загрузка бронирований при монтировании компонента
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
 
   // Сортировка бронирований по дате
   const sortedBookings = useMemo(() => {
@@ -102,15 +97,13 @@ export default function BookingsScreen() {
   }, [sortedBookings, parseBookingDateTime]);
 
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
+    setIsRefreshing(true);
     try {
-      await loadBookings();
-    } catch (error) {
-      console.error("❌ Failed to refresh bookings:", error);
+      await refetch();
     } finally {
-      setRefreshing(false);
+      setIsRefreshing(false);
     }
-  }, [loadBookings]);
+  }, [refetch]);
 
   const handleBookingPress = useCallback((booking: Booking) => {
     setSelectedBooking(booking);
@@ -120,12 +113,12 @@ export default function BookingsScreen() {
   const handleCancelBooking = useCallback(
     async (booking: Booking) => {
       try {
-        await cancelBooking(booking.id);
+        await cancelBookingMutation.mutateAsync(booking.id);
       } catch (error) {
         console.error("Failed to cancel booking:", error);
       }
     },
-    [cancelBooking]
+    [cancelBookingMutation]
   );
 
   const handleRateRestaurant = useCallback(
@@ -136,12 +129,9 @@ export default function BookingsScreen() {
     []
   );
 
-  const getRestaurantById = useCallback(
-    (id: string) => {
-      return restaurants.find((r) => r.id === id);
-    },
-    [restaurants]
-  );
+  const getRestaurantById = (id: string) => {
+    return restaurants.find((r) => r.id === id);
+  };
 
   const closeModal = useCallback(() => {
     setModalVisible(false);
@@ -161,7 +151,7 @@ export default function BookingsScreen() {
     );
   }
 
-  if (bookings.length === 0) {
+  if (groupedBookings.upcoming.length === 0) {
     return (
       <SafeAreaView className="flex-1 bg-background-primary">
         <TitleHeader title="Бронирования" />
@@ -181,11 +171,11 @@ export default function BookingsScreen() {
       <TitleHeader title="Бронирования" />
 
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor="#bd561c"
             colors={["#bd561c"]}
@@ -236,33 +226,22 @@ export default function BookingsScreen() {
           </View>
         )}
 
-        {/* Прошедшие/отмененные бронирования */}
-        {groupedBookings.past.length > 0 && (
-          <View className="mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={20}
-                color="#737373"
-              />
+        {/* Ссылка на все бронирования */}
+        {/* {sortedBookings.length > 0 && (
+          <View className="px-4">
+            <TouchableOpacity
+              onPress={() => setAllBookingsModalVisible(true)}
+              className="flex-row items-center py-3"
+            >
               <Typography
-                variant="h6"
-                className="text-text-secondary font-semibold ml-2"
+                variant="body1"
+                className="text-primary-main font-medium"
               >
-                История
+                История бронирований
               </Typography>
-            </View>
-
-            {groupedBookings.past.map((booking) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                restaurant={getRestaurantById(booking.restaurant.id)}
-                onPress={handleBookingPress}
-              />
-            ))}
+            </TouchableOpacity>
           </View>
-        )}
+        )} */}
       </ScrollView>
 
       {/* Modal для деталей бронирования */}
@@ -277,6 +256,15 @@ export default function BookingsScreen() {
         onClose={closeModal}
         onCancel={handleCancelBooking}
         onRate={handleRateRestaurant}
+      />
+
+      {/* Modal для всех бронирований */}
+      <AllBookingsModal
+        visible={allBookingsModalVisible}
+        bookings={sortedBookings}
+        onClose={() => setAllBookingsModalVisible(false)}
+        onBookingPress={handleBookingPress}
+        getRestaurantById={getRestaurantById}
       />
     </SafeAreaView>
   );

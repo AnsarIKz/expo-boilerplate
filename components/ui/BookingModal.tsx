@@ -290,19 +290,33 @@ export function BookingDetailsModal({
           )}
 
           {/* Кнопка отмены */}
-          {booking.status === "CONFIRMED" ||
-            (booking.status === "PENDING" && onCancel && (
-              <Button
-                variant="outline"
-                size="lg"
-                onPress={handleCancelBooking}
-                className="border-error-main mb-4"
-              >
-                <Typography variant="subtitle1" className="text-error-main">
-                  Отменить бронирование
-                </Typography>
-              </Button>
-            ))}
+          {(() => {
+            const now = new Date();
+            const bookingDate = new Date(booking.booking_date);
+            const [hours, minutes] = booking.booking_time
+              .split(":")
+              .map(Number);
+            bookingDate.setHours(hours, minutes);
+            const isUpcoming = bookingDate >= now;
+
+            return (
+              (booking.status === "CONFIRMED" ||
+                booking.status === "PENDING") &&
+              isUpcoming &&
+              onCancel && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onPress={handleCancelBooking}
+                  className="border-error-main mb-4"
+                >
+                  <Typography variant="subtitle1" className="text-error-main">
+                    Отменить бронирование
+                  </Typography>
+                </Button>
+              )
+            );
+          })()}
         </ScrollView>
       </View>
       {showToast && (

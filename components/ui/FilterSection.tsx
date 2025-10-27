@@ -32,7 +32,7 @@ export function FilterSection({
 
   return (
     <View className="px-4 py-4">
-      <Typography variant="h6" className="font-semibold mb-4">
+      <Typography variant="h6" className="font-semibold mb-2">
         {title}
       </Typography>
 

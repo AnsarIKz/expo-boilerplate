@@ -1,6 +1,7 @@
 import { Restaurant } from "@/entities/Restaurant";
 import { Booking } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useMemo } from "react";
 import { Image, View } from "react-native";
 import { Colors } from "../tokens";
 import { Card } from "./Card";
@@ -12,64 +13,70 @@ interface BookingCardProps {
   onPress?: (booking: Booking) => void;
 }
 
-export function BookingCard({
+// Выносим функции форматирования наружу для оптимизации
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return "Сегодня";
+  } else if (date.toDateString() === tomorrow.toDateString()) {
+    return "Завтра";
+  } else {
+    return date.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "short",
+    });
+  }
+};
+
+// Цвет статуса
+const getStatusColor = (status: Booking["status"]) => {
+  switch (status) {
+    case "CONFIRMED":
+      return Colors.success.main;
+    case "PENDING":
+      return Colors.warning.main;
+    case "CANCELLED":
+      return Colors.neutral[400];
+    case "COMPLETED":
+      return Colors.success.main;
+    default:
+      return Colors.neutral[500];
+  }
+};
+
+export const BookingCard = React.memo(function BookingCard({
   booking,
   restaurant,
   onPress,
 }: BookingCardProps) {
-  // Форматирование даты
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+  const restaurantImage = useMemo(
+    () =>
+      restaurant?.image ||
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop",
+    [restaurant?.image]
+  );
 
-    if (date.toDateString() === today.toDateString()) {
-      return "Сегодня";
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Завтра";
-    } else {
-      return date.toLocaleDateString("ru-RU", {
-        day: "numeric",
-        month: "short",
-      });
-    }
-  };
-
-  // Цвет статуса
-  const getStatusColor = (status: Booking["status"]) => {
-    switch (status) {
-      case "CONFIRMED":
-        return Colors.success.main;
-      case "PENDING":
-        return Colors.warning.main;
-      case "CANCELLED":
-        return Colors.neutral[400];
-      case "COMPLETED":
-        return Colors.success.main;
-      default:
-        return Colors.neutral[500];
-    }
-  };
-
-  const restaurantImage =
-    restaurant?.image ||
-    booking.restaurant?.image_urls?.[0] ||
-    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop";
+  const handlePress = useCallback(() => {
+    onPress?.(booking);
+  }, [onPress, booking]);
 
   return (
     <Card
       variant="elevated"
       padding="none"
-      onPress={() => onPress?.(booking)}
-      className="overflow-hidden mb-4"
+      onPress={handlePress}
+      className="overflow-hidden mb-4 mx-0 rounded-none"
     >
       <View className="flex-row">
         {/* Изображение ресторана */}
-        <View className="w-24 h-24 relative m-3">
+        <View className="w-28 h-28 relative">
           <Image
             source={{ uri: restaurantImage }}
-            className="w-full h-full rounded-xl"
+            className="w-full h-full"
             resizeMode="cover"
           />
           {/* Статус индикатор */}
@@ -82,7 +89,7 @@ export function BookingCard({
         </View>
 
         {/* Контент */}
-        <View className="flex-1 p-4 pl-0">
+        <View className="flex-1 p-4">
           {/* Название и адрес */}
           <View className="mb-3">
             <Typography
@@ -155,4 +162,4 @@ export function BookingCard({
       </View>
     </Card>
   );
-}
+});

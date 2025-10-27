@@ -23,6 +23,7 @@ interface FiltersState {
     min: number;
     max: number;
   };
+  priceCategories: FilterOption[];
   cuisines: FilterOption[];
   features: FilterOption[];
   tags: FilterOption[];
@@ -31,6 +32,7 @@ interface FiltersState {
 interface FiltersContextType {
   filters: FiltersState;
   updatePriceRange: (min: number, max: number) => void;
+  togglePriceCategory: (id: string) => void;
   toggleCuisine: (id: string) => void;
   toggleFeature: (id: string) => void;
   toggleTag: (id: string) => void;
@@ -55,12 +57,20 @@ const FALLBACK_FEATURES = [
   { id: "OUTDOOR_SEATING", label: "Outdoor Seating", isSelected: false },
 ];
 
+const FALLBACK_PRICE_CATEGORIES = [
+  { id: "BUDGET", label: "Бюджетный ($)", isSelected: false },
+  { id: "MODERATE", label: "Умеренный ($$)", isSelected: false },
+  { id: "EXPENSIVE", label: "Дорогой ($$$)", isSelected: false },
+  { id: "VERY_EXPENSIVE", label: "Очень дорогой ($$$$)", isSelected: false },
+];
+
 // Начальное состояние фильтров
 const INITIAL_FILTERS: FiltersState = {
   priceRange: {
     min: 1000,
     max: 15000,
   },
+  priceCategories: FALLBACK_PRICE_CATEGORIES,
   cuisines: FALLBACK_CUISINES, // Используем fallback данные
   features: FALLBACK_FEATURES, // Используем fallback данные
   tags: [],
@@ -108,6 +118,17 @@ export function FiltersProvider({ children }: FiltersProviderProps) {
     }));
   }, []);
 
+  const togglePriceCategory = useCallback((id: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      priceCategories: prev.priceCategories.map((category) =>
+        category.id === id
+          ? { ...category, isSelected: !category.isSelected }
+          : category
+      ),
+    }));
+  }, []);
+
   const toggleCuisine = useCallback((id: string) => {
     setFilters((prev) => ({
       ...prev,
@@ -140,21 +161,26 @@ export function FiltersProvider({ children }: FiltersProviderProps) {
   }, []);
 
   const clearAllFilters = useCallback(() => {
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
       priceRange: {
         min: INITIAL_FILTERS.priceRange.min,
         max: INITIAL_FILTERS.priceRange.max,
       },
-      cuisines: INITIAL_FILTERS.cuisines.map((cuisine) => ({
+      priceCategories: prev.priceCategories.map((category) => ({
+        ...category,
+        isSelected: false,
+      })),
+      cuisines: prev.cuisines.map((cuisine) => ({
         ...cuisine,
         isSelected: false,
       })),
-      features: INITIAL_FILTERS.features.map((feature) => ({
+      features: prev.features.map((feature) => ({
         ...feature,
         isSelected: false,
       })),
-      tags: INITIAL_FILTERS.tags.map((tag) => ({ ...tag, isSelected: false })),
-    });
+      tags: prev.tags.map((tag) => ({ ...tag, isSelected: false })),
+    }));
   }, []);
 
   const getActiveFiltersCount = useCallback(() => {
@@ -165,6 +191,9 @@ export function FiltersProvider({ children }: FiltersProviderProps) {
       (f) => f.isSelected
     ).length;
     const selectedTags = filters.tags.filter((t) => t.isSelected).length;
+    const selectedPriceCategories = filters.priceCategories.filter(
+      (c) => c.isSelected
+    ).length;
     const priceChanged =
       filters.priceRange.min !== INITIAL_FILTERS.priceRange.min ||
       filters.priceRange.max !== INITIAL_FILTERS.priceRange.max;
@@ -173,6 +202,7 @@ export function FiltersProvider({ children }: FiltersProviderProps) {
       selectedCuisines +
       selectedFeatures +
       selectedTags +
+      selectedPriceCategories +
       (priceChanged ? 1 : 0)
     );
   }, [filters]);
@@ -184,6 +214,7 @@ export function FiltersProvider({ children }: FiltersProviderProps) {
   const value: FiltersContextType = {
     filters,
     updatePriceRange,
+    togglePriceCategory,
     toggleCuisine,
     toggleFeature,
     toggleTag,

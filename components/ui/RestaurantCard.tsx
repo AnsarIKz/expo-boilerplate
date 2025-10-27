@@ -2,11 +2,10 @@ import { Restaurant } from "@/entities/Restaurant";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { Colors } from "../tokens";
 import { Card } from "./Card";
-import { ImageSkeleton } from "./ImageSkeleton";
 import { Typography } from "./Typography";
 
 interface RestaurantCardProps {
@@ -47,7 +46,10 @@ const getAllTags = (restaurant: Restaurant): string[] => {
   return tags;
 };
 
-export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
+export const RestaurantCard = React.memo(function RestaurantCard({
+  restaurant,
+  onPress,
+}: RestaurantCardProps) {
   const priceLevel = formatPriceLevel(restaurant.priceRange || "medium");
   const allTags = getAllTags(restaurant);
   const [isPressed, setIsPressed] = useState(false);
@@ -57,10 +59,13 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const isRestaurantFavorite = isFavorite(restaurant.id);
 
-  const handleFavoritePress = (e: any) => {
-    e.stopPropagation(); // Предотвращаем всплытие события к onPress карточки
-    toggleFavorite(restaurant);
-  };
+  const handleFavoritePress = useCallback(
+    (e: any) => {
+      e.stopPropagation(); // Предотвращаем всплытие события к onPress карточки
+      toggleFavorite(restaurant);
+    },
+    [toggleFavorite, restaurant]
+  );
 
   const handleCardPress = useCallback(() => {
     if (isPressed) return; // Предотвращаем множественные нажатия
@@ -81,9 +86,6 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
     >
       {/* Image Container */}
       <View className="relative h-[240px]">
-        {imageLoading && (
-          <ImageSkeleton width="100%" height={240} borderRadius={0} />
-        )}
         <Image
           source={{ uri: restaurant.image }}
           className="w-full h-full"
@@ -169,4 +171,4 @@ export function RestaurantCard({ restaurant, onPress }: RestaurantCardProps) {
       </View>
     </Card>
   );
-}
+});

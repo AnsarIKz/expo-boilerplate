@@ -37,7 +37,7 @@ interface LocalToast {
 }
 
 export function AuthRequired({ onClose }: AuthRequiredProps) {
-  const [phoneNumber, setPhoneNumber] = useState("00 101 61 10");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [isCountrySelectorVisible, setIsCountrySelectorVisible] =
     useState(false);
   const [isSmsCodeVisible, setIsSmsCodeVisible] = useState(false);
@@ -53,7 +53,7 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
     name: "Kazakhstan",
     code: "KZ",
     flag: "🇰🇿",
-    dialCode: "+77",
+    dialCode: "+7",
   });
 
   // Animation refs for toast
@@ -420,7 +420,7 @@ export function AuthRequired({ onClose }: AuthRequiredProps) {
                   <TextInput
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
-                    placeholder="** *** ** **"
+                    placeholder="*** *** ** **"
                     placeholderTextColor="#999"
                     className="flex-1 text-black text-base items-center font-normal h-full"
                     keyboardType="phone-pad"

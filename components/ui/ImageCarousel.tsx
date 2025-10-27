@@ -7,7 +7,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { ImageSkeleton } from "./ImageSkeleton";
+import { Typography } from "./Typography";
 
 interface ImageCarouselProps {
   images: string[];
@@ -43,7 +43,9 @@ export function ImageCarousel({ images, height = 300 }: ImageCarouselProps) {
         className="bg-neutral-100 items-center justify-center"
         style={{ height }}
       >
-        <ImageSkeleton width="100%" height={height} borderRadius={0} />
+        <Typography variant="body1" className="text-neutral-500">
+          Нет изображений
+        </Typography>
       </View>
     );
   }
@@ -62,11 +64,6 @@ export function ImageCarousel({ images, height = 300 }: ImageCarouselProps) {
       >
         {images.map((image, index) => (
           <View key={index} style={{ width: screenWidth, height }}>
-            {/* Loading skeleton for this specific image */}
-            {imageLoading[index] && (
-              <ImageSkeleton width="100%" height={height} borderRadius={0} />
-            )}
-
             <Image
               source={{ uri: image }}
               style={{

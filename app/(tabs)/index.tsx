@@ -5,7 +5,6 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { LocationHeader } from "@/components/ui/LocationHeader";
 import { RestaurantCard } from "@/components/ui/RestaurantCard";
 import { SearchWrapper } from "@/components/ui/SearchWrapper";
@@ -22,6 +21,7 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState("");
   const [filterChips, setFilterChips] = useState(initialFilterChips);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { getDisplayName } = useCityContext();
   const { getActiveFiltersCount } = useFiltersContext();
 
@@ -34,7 +34,7 @@ export default function HomeScreen() {
       const firstTenCuisines = cuisineTypes.slice(0, 10);
       setFilterChips(firstTenCuisines);
     }
-  }, [cuisineTypes, filterChips.length]);
+  }, [cuisineTypes]);
 
   // Refs для анимации и скролла
   const scrollViewRef = useRef<ScrollView>(null);
@@ -124,12 +124,17 @@ export default function HomeScreen() {
     router.push("/city-selector");
   }, []);
 
-  // Рендер списка ресторанов
-  const renderRestaurantList = () => {
-    if (isLoading) {
-      return <LoadingSpinner text="Поиск ресторанов..." />;
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
     }
+  }, [refetch]);
 
+  // Мемоизированный рендер списка ресторанов
+  const renderRestaurantList = useMemo(() => {
     if (error) {
       return (
         <EmptyState
@@ -140,7 +145,7 @@ export default function HomeScreen() {
       );
     }
 
-    if (filteredRestaurants.length === 0) {
+    if (filteredRestaurants.length === 0 && !isLoading) {
       return (
         <EmptyState
           title="Ничего не найдено"
@@ -161,7 +166,7 @@ export default function HomeScreen() {
         ))}
       </View>
     );
-  };
+  }, [error, filteredRestaurants, isLoading, handleRestaurantPress]);
 
   return (
     <SafeAreaProvider>
@@ -191,8 +196,8 @@ export default function HomeScreen() {
           }
           refreshControl={
             <RefreshControl
-              refreshing={isLoading && !isSearchFocused}
-              onRefresh={refetch}
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
               enabled={!isSearchFocused}
               tintColor="#bd561c"
               colors={["#bd561c"]}
@@ -221,7 +226,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Restaurant List */}
-          {renderRestaurantList()}
+          {renderRestaurantList}
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>

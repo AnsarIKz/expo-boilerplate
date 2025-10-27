@@ -48,6 +48,7 @@ export const useTimeSlots = (restaurantId: string, date: string) => {
           restaurantId: availability.restaurant_id,
           date: availability.date,
           dayOfWeek: availability.day_of_week,
+          isOpen: availability.is_open,
           openingTime: availability.opening_time,
           closingTime: availability.closing_time,
         }
