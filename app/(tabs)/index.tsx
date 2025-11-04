@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { Colors } from "@/components/tokens";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { LocationHeader } from "@/components/ui/LocationHeader";
@@ -91,10 +92,6 @@ export default function HomeScreen() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
 
-  const scrollToFilters = useCallback(() => {
-    scrollViewRef.current?.scrollTo({ y: 80, animated: true });
-  }, []);
-
   // useCallback для предотвращения пересоздания функций при каждом рендере
   const handleChipPress = useCallback((chipId: string) => {
     setFilterChips((prev) =>
@@ -170,7 +167,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-background-primary">
+      <SafeAreaView className="flex-1 bg-background-primary pb-12">
         {/* Fixed Header with animated buttons */}
 
         <LocationHeader
@@ -199,8 +196,8 @@ export default function HomeScreen() {
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
               enabled={!isSearchFocused}
-              tintColor="#bd561c"
-              colors={["#bd561c"]}
+              tintColor={Colors.primary[500]}
+              colors={[Colors.primary[500]]}
             />
           }
         >

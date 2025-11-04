@@ -69,23 +69,16 @@ export const BookingCard = React.memo(function BookingCard({
       variant="elevated"
       padding="none"
       onPress={handlePress}
-      className="overflow-hidden mb-4 mx-0 rounded-none"
+      className="overflow-hidden mb-4 rounded-lg"
     >
       <View className="flex-row">
         {/* Изображение ресторана */}
-        <View className="w-28 h-28 relative">
+        <View className="w-28 h-28 relative rounded-lg overflow-hidden">
           <Image
             source={{ uri: restaurantImage }}
             className="w-full h-full"
             resizeMode="cover"
           />
-          {/* Статус индикатор */}
-          <View className="absolute top-2 right-2">
-            <View
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: getStatusColor(booking.status) }}
-            />
-          </View>
         </View>
 
         {/* Контент */}

@@ -2,6 +2,7 @@ import { Colors } from "@/components/tokens";
 import { BookingCreateModal } from "@/components/ui/BookingCreateModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ParallaxImageCarousel } from "@/components/ui/ParallaxImageCarousel";
 import { RestaurantTags } from "@/components/ui/RestaurantTags";
 import { Typography } from "@/components/ui/Typography";
@@ -111,7 +112,7 @@ const formatAllWorkingHours = (
 
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: restaurant, isLoading, error } = useRestaurantApi(id || "");
+  const { data: restaurant, isLoading, error } = useRestaurantApi(id ?? "");
   const { isFavorite, toggleFavorite } = useFavorites();
   const createBookingMutation = useCreateBooking();
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -204,12 +205,21 @@ export default function RestaurantDetailScreen() {
     [scrollY]
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background-primary items-center justify-center">
+        <LoadingSpinner text=" " />
+      </SafeAreaView>
+    );
+  }
+
   // Error state
   if (error || !restaurant) {
     return (
       <SafeAreaView className="flex-1 bg-background-primary items-center justify-center">
         <Typography variant="h6" className="text-text-secondary">
-          {error ? "Ошибка загрузки ресторана" : "Ресторан не найден"}
+          Ошибка загрузки ресторана
         </Typography>
       </SafeAreaView>
     );
@@ -244,7 +254,7 @@ export default function RestaurantDetailScreen() {
   });
 
   return (
-    <View className="flex-1 bg-background-cream">
+    <View className="flex-1 bg-background-cream pb-12">
       {/* Header with Back Button - используем стандартные отступы */}
       <View
         className="absolute left-6 right-6 z-50 flex-row justify-between"
@@ -349,7 +359,8 @@ export default function RestaurantDetailScreen() {
                   variant="body1"
                   className="ml-3 text-text-secondary"
                 >
-                  {priceLevel} • $$$
+                  {" "}
+                  {priceLevel}
                 </Typography>
               </View>
 

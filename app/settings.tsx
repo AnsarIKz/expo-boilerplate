@@ -58,6 +58,7 @@ const SettingItem = ({
           disabled={disabled}
           trackColor={{ false: Colors.neutral[300], true: Colors.primary[200] }}
           thumbColor={value ? Colors.primary[500] : Colors.neutral[500]}
+          style={{ transform: [{ scale: 0.9 }] }}
         />
       )}
 

@@ -80,7 +80,7 @@ export default function FavoritesScreen() {
   }, [favoritesCount]);
 
   return (
-    <SafeAreaView className="flex-1 bg-background-primary">
+    <SafeAreaView className="flex-1 bg-background-primary pb-12">
       {/* Header */}
       <TitleHeader
         title="Избранное"
@@ -107,13 +107,23 @@ export default function FavoritesScreen() {
           />
         ) : (
           <View className="pt-2">
-            {favoriteRestaurants.map((restaurant) => (
-              <RestaurantCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                onPress={handleRestaurantPress}
-              />
-            ))}
+            {favoriteRestaurants.map((restaurant) => {
+              const featuresAsArray = restaurant.features
+                ? Object.entries(restaurant.features)
+                    .filter(([, value]) => value)
+                    .map(([key]) => key)
+                : [];
+
+              return (
+                <View className="px-4">
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={{ ...restaurant, features: featuresAsArray }}
+                    onPress={handleRestaurantPress}
+                  />
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>

@@ -1,8 +1,8 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Colors } from "@/components/tokens";
 import { AllBookingsModal } from "@/components/ui/AllBookingsModal";
 import { BookingCard } from "@/components/ui/BookingCard";
 import { BookingDetailsModal } from "@/components/ui/BookingModal";
@@ -76,7 +76,7 @@ export default function BookingsScreen() {
         booking.booking_date || booking.date,
         booking.booking_time || booking.time
       );
-      return bookingDate >= now && booking.status === "CONFIRMED";
+      return bookingDate >= now && booking.status !== "CANCELLED";
     });
 
     const past = sortedBookings.filter((booking) => {
@@ -166,7 +166,7 @@ export default function BookingsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-primary">
+    <SafeAreaView className="h-full bg-background-primary pb-12">
       {/* Header */}
       <TitleHeader title="Бронирования" />
 
@@ -177,8 +177,8 @@ export default function BookingsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#bd561c"
-            colors={["#bd561c"]}
+            tintColor={Colors.primary[500]}
+            colors={[Colors.primary[500]]}
           />
         }
         contentContainerStyle={{
@@ -186,35 +186,9 @@ export default function BookingsScreen() {
           paddingTop: 16,
         }}
       >
-        {/* Debug: Show all bookings if grouping fails */}
-        {groupedBookings.upcoming.length === 0 &&
-          groupedBookings.past.length === 0 &&
-          sortedBookings.length > 0 && (
-            <View className="mb-6">
-              {sortedBookings.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  restaurant={getRestaurantById(booking.restaurant.id)}
-                  onPress={handleBookingPress}
-                />
-              ))}
-            </View>
-          )}
-
         {/* Предстоящие бронирования */}
         {groupedBookings.upcoming.length > 0 && (
-          <View className="mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="time-outline" size={20} color="#bd561c" />
-              <Typography
-                variant="h6"
-                className="text-text-primary font-semibold ml-2"
-              >
-                Предстоящие
-              </Typography>
-            </View>
-
+          <>
             {groupedBookings.upcoming.map((booking) => (
               <BookingCard
                 key={booking.id}
@@ -223,7 +197,7 @@ export default function BookingsScreen() {
                 onPress={handleBookingPress}
               />
             ))}
-          </View>
+          </>
         )}
 
         {/* Ссылка на все бронирования */}
